@@ -28,7 +28,7 @@ categories:
       food history without a practical cooking focus.
     reason_hint: covers recipes, technique, equipment, or menu planning
     weight: 1.2
-    enabled: true
+    enabled: false
 
   - id: books-film-music
     name: Books, Film & Music
@@ -58,7 +58,7 @@ categories:
       story without a hands-on project.
     reason_hint: covers a hands-on build, repair, tool, or maker project
     weight: 1.1
-    enabled: true
+    enabled: false
 
   - id: cycling-outdoors
     name: Cycling & Outdoors
@@ -103,7 +103,7 @@ categories:
       activity without a destination or itinerary focus.
     reason_hint: covers a destination, itinerary, historic site, or day trip
     weight: 1.0
-    enabled: true
+    enabled: false
 
   - id: gadgets-gear
     name: Gadgets & Gear
@@ -118,7 +118,7 @@ categories:
       accessory mentioned only in passing.
     reason_hint: covers a device, gear review, repair, or buying decision
     weight: 0.9
-    enabled: true
+    enabled: false
 
   - id: science-space
     name: Science & Space
@@ -133,7 +133,7 @@ categories:
       science fiction entertainment.
     reason_hint: covers a discovery, space mission, or science explainer
     weight: 0.9
-    enabled: true
+    enabled: false
 
   - id: local-culture-events
     name: Local Culture & Events
@@ -147,4 +147,4 @@ categories:
       event, or arts business news.
     reason_hint: covers an exhibition, festival, concert, fair, or local guide
     weight: 0.8
-    enabled: true
+    enabled: false
