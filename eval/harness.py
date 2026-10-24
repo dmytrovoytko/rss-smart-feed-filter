@@ -289,7 +289,26 @@ def run_live(args, profiles, items):
         if index % 10 == 0 or index == total:
             lap_time = time.perf_counter() - started0 - elapsed0
             elapsed0 = time.perf_counter() - started0
-            print(f"[{index}/{total}] {item['id']} {elapsed:.2f}s // +{lap_time:.2f}s // {elapsed0:.2f}s", file=sys.stderr)
+            print(f"[{index}/{total}] {item['id']} {elapsed:6.2f}s / +{lap_time:.2f}s // {elapsed0:.2f}s", file=sys.stderr)
+
+    predictions_out = args.predictions_out or (ROOT / "eval" / f"predictions-{args.model}.json")
+    predictions_payload = [
+        {
+            "id": item["id"],
+            "profile": item["profile"],
+            "title": item["title"],
+            "summary": item["summary"],
+            "labels_src": item["labels"],
+            "labels": predictions[item["id"]]["labels"],
+            "score": predictions[item["id"]]["score"],
+            "probabilities": predictions[item["id"]]["probabilities"],
+            "latency_s": predictions[item["id"]]["latency_s"],
+        }
+        for item in items
+        if item["id"] in predictions
+    ]
+    predictions_out.parent.mkdir(parents=True, exist_ok=True)
+    predictions_out.write_text(json.dumps(predictions_payload, indent=2), encoding="utf-8")
 
     results = {}
     for profile_id, profile in profiles.items():
@@ -424,7 +443,7 @@ def main():
     parser = argparse.ArgumentParser(description="Evaluate tev1 against the local profile eval set")
     parser.add_argument("--base-url", default=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434"))
     parser.add_argument("--model", default=os.environ.get("TEV_MODEL", "tev1:0.8b"))
-    parser.add_argument("--threshold", type=float, default=0.55)
+    parser.add_argument("--threshold", type=float, default=0.62) # 0.55 was start point, fine tuned 0.60 -> 0.62
     parser.add_argument("--items", type=Path, default=DEFAULT_ITEMS)
     parser.add_argument("--profiles-dir", type=Path, default=DEFAULT_PROFILES)
     parser.add_argument("--profile", action="append", default=None)
@@ -433,6 +452,7 @@ def main():
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--predictions-out", type=Path, default=None)
     parser.add_argument("--gate", action="store_true")
     parser.add_argument("--min-macro-f1", type=float, default=0.75)
     parser.add_argument("--min-precision-at-10", type=float, default=0.70)
