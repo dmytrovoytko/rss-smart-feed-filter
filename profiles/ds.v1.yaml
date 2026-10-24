@@ -86,10 +86,12 @@ categories:
       modeling, data quality, and platform architecture.
     criteria_true: >-
       The item is substantially about building, modeling, orchestrating, or
-      operating data pipelines and data platforms.
+      operating data pipelines, data platforms, or data flow systems, including
+      warehouses, dbt, Spark, streaming, orchestration, or data quality work.
     criteria_false: >-
       The item is about model research, analytics interpretation, or business
-      intelligence without a data-platform focus.
+      intelligence without a data-platform focus, or about analytics dashboards
+      without a pipeline or platform component.
     reason_hint: covers pipelines, warehouses, dbt, Spark, or data platforms
     weight: 1.0
     enabled: true

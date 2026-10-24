@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T08:43:39.725106+00:00",
+  "generated_at": "2026-10-24T09:36:19.935501+00:00",
   "model": "tev1:0.8b",
   "ollama_version": "0.40.8",
   "base_url": "http://127.0.0.1:11434",
@@ -8,11 +8,11 @@
   "items": 50,
   "failures": [],
   "latency_s": {
-    "p50": 9.28730316401925,
-    "p95": 9.618960594991222,
-    "max": 9.765396494010929
+    "p50": 9.719804464024492,
+    "p95": 10.383733998052776,
+    "max": 11.182132450980134
   },
-  "harness_peak_rss_mb": 49.13671875,
+  "harness_peak_rss_mb": 49.09375,
   "profiles": {
     "ds.v1": {
       "profile": "Data Scientist",
@@ -23,7 +23,7 @@
       "micro_precision": 0.65625,
       "micro_recall": 0.6363636363636364,
       "precision_at_10": 1.0,
-      "brier": 0.09780011813346193,
+      "brier": 0.09848724613231115,
       "gt_none_items": 4,
       "gt_none_predicted_none": 3,
       "categories_with_support": 8,
@@ -132,7 +132,7 @@
     "passed": false,
     "reasons": [
       "ds.v1: macro-F1 0.572 < 0.75",
-      "p95 latency 9.62s > 2.0s"
+      "p95 latency 10.38s > 2.0s"
     ]
   }
 }
