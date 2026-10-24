@@ -21,11 +21,12 @@ categories:
       New machine-learning methods, architectures, training techniques,
       benchmarks, or results from research papers and research labs.
     criteria_true: >-
-      The item reports or analyzes a machine-learning method, model,
-      benchmark, training technique, or research finding.
+      The item reports or analyzes a machine-learning method, model, benchmark,
+      training technique, or research finding, including architectures, training
+      methods, or evaluation results.
     criteria_false: >-
       The item is product news, production operations, business news, career
-      advice, or not about machine-learning methods.
+      advice, or not about machine-learning research.
     reason_hint: covers methods, architectures, benchmarks, or research findings
     weight: 1.3
     enabled: true
@@ -37,10 +38,12 @@ categories:
       fine-tuning, evaluation, model releases, and LLM applications.
     criteria_true: >-
       The item is substantially about large language models, generative AI,
-      agents, prompting, RAG, or LLM applications and releases.
+      agents, prompting, RAG, fine-tuning, or LLM applications, rather than
+      classical machine learning methods or general software engineering.
     criteria_false: >-
       The item is about classical machine learning, analytics, infrastructure,
-      or general software engineering without a generative-AI focus.
+      or general software engineering without a generative-AI focus, or an LLM
+      release without an application or capability angle.
     reason_hint: covers LLMs, agents, prompting, RAG, or generative-AI releases
     weight: 1.3
     enabled: true
@@ -53,10 +56,12 @@ categories:
       infrastructure.
     criteria_true: >-
       The item focuses on deploying, serving, monitoring, or operating
-      machine-learning models and pipelines in production.
+      machine-learning models or pipelines in production, including serving
+      infrastructure, drift, monitoring, or retraining operations.
     criteria_false: >-
-      The item is primarily a new modeling result, a generic data pipeline, or
-      a product announcement without production ML operations.
+      The item is primarily a new modeling result, a generic data pipeline, an
+      analytics effort, or a product announcement without production ML
+      operations.
     reason_hint: covers serving, monitoring, drift, or production ML operations
     weight: 1.1
     enabled: true
@@ -118,11 +123,13 @@ categories:
       Business analytics, KPI and metric design, dashboards, reporting, and
       data visualization.
     criteria_true: >-
-      The item is about interpreting business data, designing metrics or KPIs,
-      dashboards, reporting, or visualization.
+      The item is about interpreting business data, designing business metrics
+      or KPIs, dashboards, reporting, or data visualization, without an
+      experiment or causal-inference framing.
     criteria_false: >-
-      The item is about model research, production ML operations, or data
-      pipelines without an analytics or visualization focus.
+      The item is about model research, production ML operations, data
+      pipelines, or general software engineering without an analytics or
+      visualization focus.
     reason_hint: covers KPIs, dashboards, reporting, or data visualization
     weight: 0.9
     enabled: true
@@ -133,13 +140,13 @@ categories:
       Responsible AI, model evaluation and safety, bias, privacy,
       accountability, governance, and red teaming.
     criteria_true: >-
-      The item is substantially about evaluating, auditing, red-teaming, or
-      governing AI systems, including model evaluation, bias or fairness
-      testing, privacy or safety risk assessment, accountability, or governance.
+      The item reports on an AI system evaluation, audit, red-team exercise,
+      safety assessment, privacy risk analysis, or governance activity rather
+      than describing a new capability or research advance.
     criteria_false: >-
-      The item is only a model capability announcement, research advance, or
-      general commentary without an evaluation, safety, bias, privacy,
-      governance, or red-teaming focus.
+      The item is only about a new AI capability, model release, research
+      advance, or general commentary without an evaluation, audit, red-team,
+      safety, privacy, or governance component.
     reason_hint: covers evaluation, safety, bias, privacy, or governance
     weight: 0.9
     enabled: true
