@@ -1,0 +1,42 @@
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+downloads/
+lib/
+parts/
+sdist/
+MANIFEST
+*.egg-info/
+
+# Test and lint caches
+.ruff_cache/
+.coverage
+
+# Local stuff:
+*.log
+
+# Environments
+.env
+.env.*
+!.env.example
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+### My files
+_arc/
+_tmp/
+_dev/
+data/
+.locks/
+session-*.md
