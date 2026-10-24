@@ -258,10 +258,15 @@ def run_live(args, profiles, items):
     failures = []
     total = len(items)
     started0 = time.perf_counter()
+    elapsed0 = 0
     for index, item in enumerate(items, 1):
         profile = profiles[item["profile"]]
         state = build_state(item, args.state_chars)
+
+        started = time.perf_counter()
         questions = build_questions(profile)
+        elapsed = time.perf_counter() - started
+
         started = time.perf_counter()
         try:
             probabilities = client.decide(state, questions)
@@ -282,9 +287,9 @@ def run_live(args, profiles, items):
             "latency_s": elapsed,
         }
         if index % 10 == 0 or index == total:
-            print(f"[{index}/{total}] {item['id']} {elapsed:.2f}s", file=sys.stderr)
-    elapsed0 = time.perf_counter() - started0
-    print(f"Total time: {elapsed0:.2f}s", file=sys.stderr)
+            lap_time = time.perf_counter() - started0 - elapsed0
+            elapsed0 = time.perf_counter() - started0
+            print(f"[{index}/{total}] {item['id']} {elapsed:.2f}s // +{lap_time:.2f}s // {elapsed0:.2f}s", file=sys.stderr)
 
     results = {}
     for profile_id, profile in profiles.items():
