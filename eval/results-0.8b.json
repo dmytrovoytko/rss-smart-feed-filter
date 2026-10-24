@@ -1,31 +1,31 @@
 {
-  "generated_at": "2026-10-24T09:36:19.935501+00:00",
+  "generated_at": "2026-10-24T12:47:37.927883+00:00",
   "model": "tev1:0.8b",
   "ollama_version": "0.40.8",
   "base_url": "http://127.0.0.1:11434",
-  "threshold": 0.55,
+  "threshold": 0.62,
   "state_chars": 1200,
-  "items": 50,
+  "items": 100,
   "failures": [],
   "latency_s": {
-    "p50": 9.719804464024492,
-    "p95": 10.383733998052776,
-    "max": 11.182132450980134
+    "p50": 7.6655136400368065,
+    "p95": 10.546920449007303,
+    "max": 11.495029875077307
   },
-  "harness_peak_rss_mb": 49.09375,
+  "harness_peak_rss_mb": 49.234375,
   "profiles": {
     "ds.v1": {
       "profile": "Data Scientist",
-      "threshold": 0.55,
+      "threshold": 0.62,
       "items": 50,
-      "macro_f1": 0.5719049741108565,
-      "micro_f1": 0.6461538461538462,
-      "micro_precision": 0.65625,
+      "macro_f1": 0.5948597970656794,
+      "micro_f1": 0.6614173228346456,
+      "micro_precision": 0.6885245901639344,
       "micro_recall": 0.6363636363636364,
       "precision_at_10": 1.0,
-      "brier": 0.09848724613231115,
+      "brier": 0.09851656101616492,
       "gt_none_items": 4,
-      "gt_none_predicted_none": 3,
+      "gt_none_predicted_none": 4,
       "categories_with_support": 8,
       "categories_without_support": [],
       "categories": [
@@ -71,11 +71,11 @@
           "weight": 1.1,
           "support": 4,
           "tp": 2,
-          "fp": 4,
+          "fp": 3,
           "fn": 2,
-          "precision": 0.3333333333333333,
+          "precision": 0.4,
           "recall": 0.5,
-          "f1": 0.4
+          "f1": 0.4444444444444445
         },
         {
           "id": "data-engineering",
@@ -83,11 +83,11 @@
           "weight": 1.0,
           "support": 7,
           "tp": 4,
-          "fp": 3,
+          "fp": 2,
           "fn": 3,
-          "precision": 0.5714285714285714,
+          "precision": 0.6666666666666666,
           "recall": 0.5714285714285714,
-          "f1": 0.5714285714285714
+          "f1": 0.6153846153846153
         },
         {
           "id": "ds-tooling",
@@ -95,11 +95,11 @@
           "weight": 1.0,
           "support": 4,
           "tp": 2,
-          "fp": 1,
+          "fp": 0,
           "fn": 2,
-          "precision": 0.6666666666666666,
+          "precision": 1.0,
           "recall": 0.5,
-          "f1": 0.5714285714285715
+          "f1": 0.6666666666666666
         },
         {
           "id": "analytics-viz",
@@ -126,13 +126,66 @@
           "f1": 0.3333333333333333
         }
       ]
+    },
+    "fun.v1": {
+      "profile": "Off-Work",
+      "threshold": 0.62,
+      "items": 50,
+      "macro_f1": 0.8666666666666667,
+      "micro_f1": 0.878048780487805,
+      "micro_precision": 1.0,
+      "micro_recall": 0.782608695652174,
+      "precision_at_10": 1.0,
+      "brier": 0.019220488452765663,
+      "gt_none_items": 3,
+      "gt_none_predicted_none": 3,
+      "categories_with_support": 3,
+      "categories_without_support": [],
+      "categories": [
+        {
+          "id": "books-film-music",
+          "name": "Books, Film & Music",
+          "weight": 1.2,
+          "support": 8,
+          "tp": 4,
+          "fp": 0,
+          "fn": 4,
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6666666666666666
+        },
+        {
+          "id": "cycling-outdoors",
+          "name": "Cycling & Outdoors",
+          "weight": 1.1,
+          "support": 8,
+          "tp": 7,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.875,
+          "f1": 0.9333333333333333
+        },
+        {
+          "id": "games-tabletop",
+          "name": "Games & Tabletop",
+          "weight": 1.0,
+          "support": 7,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      ]
     }
   },
   "gate": {
     "passed": false,
     "reasons": [
-      "ds.v1: macro-F1 0.572 < 0.75",
-      "p95 latency 10.38s > 2.0s"
+      "ds.v1: macro-F1 0.595 < 0.75",
+      "p95 latency 10.55s > 2.0s"
     ]
   }
 }
