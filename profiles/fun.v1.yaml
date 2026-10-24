@@ -1,0 +1,150 @@
+id: fun.v1
+name: Off-Work
+kind: fun
+version: 1
+threshold: 0.55
+max_categories: 16
+seed: true
+description: >
+  Personal reading profile for hobbies and downtime. Prefers practical or
+  curious hobby material over work/industry news, politics, celebrity gossip,
+  and health or medical advice.
+exclude_hints:
+  - work, industry, hiring, and funding news
+  - politics and general current affairs
+  - health, fitness, and medical advice
+  - celebrity gossip and tabloid coverage
+categories:
+  - id: cooking-bbq
+    name: Cooking & BBQ
+    description: >-
+      Recipes, cooking techniques, equipment comparisons, regional cuisine,
+      and hosting or menu ideas.
+    criteria_true: >-
+      The item contains or discusses recipes, cooking technique, kitchen or
+      barbecue equipment, or food and menu planning.
+    criteria_false: >-
+      The item is about restaurants as business, health or nutrition advice, or
+      food history without a practical cooking focus.
+    reason_hint: covers recipes, technique, equipment, or menu planning
+    weight: 1.2
+    enabled: true
+
+  - id: books-film-music
+    name: Books, Film & Music
+    description: >-
+      Book, film, television, and music reviews, recommendations, essays,
+      author or artist interviews, and new releases.
+    criteria_true: >-
+      The item reviews, recommends, or reports on a book, film, television
+      series, album, or music release.
+    criteria_false: >-
+      The item is about the business of media, general celebrity news, or
+      gaming without a book, film, or music focus.
+    reason_hint: covers a book, film, show, album, or artist
+    weight: 1.2
+    enabled: true
+
+  - id: diy-woodworking
+    name: DIY & Woodworking
+    description: >-
+      Home and workshop projects, tools, build guides, repairs, and maker
+      projects.
+    criteria_true: >-
+      The item explains or shows a DIY, woodworking, repair, electronics, or
+      maker project and the tools or steps involved.
+    criteria_false: >-
+      The item is a product announcement, event listing, or general technology
+      story without a hands-on project.
+    reason_hint: covers a hands-on build, repair, tool, or maker project
+    weight: 1.1
+    enabled: true
+
+  - id: cycling-outdoors
+    name: Cycling & Outdoors
+    description: >-
+      Cycling routes, bikes and gear, bikepacking, hiking, climbing, trail
+      reports, and outdoor trips.
+    criteria_true: >-
+      The item is about cycling, bikepacking, hiking, climbing, trail routes,
+      or outdoor gear and trips.
+    criteria_false: >-
+      The item is about professional sports business, health or training
+      advice, or general travel without an outdoor-activity focus.
+    reason_hint: covers cycling, routes, bikepacking, hiking, or outdoor gear
+    weight: 1.1
+    enabled: true
+
+  - id: games-tabletop
+    name: Games & Tabletop
+    description: >-
+      Board games, tabletop RPGs, video games, game design, session ideas,
+      and releases.
+    criteria_true: >-
+      The item is about a board game, tabletop RPG, video game, game design,
+      or game release and how to play or run it.
+    criteria_false: >-
+      The item is about the games industry as business, esports results, or
+      film and television adaptations without a play focus.
+    reason_hint: covers a board game, RPG, video game, or game release
+    weight: 1.0
+    enabled: true
+
+  - id: travel-day-trips
+    name: Travel & Day Trips
+    description: >-
+      Destinations, itineraries, city breaks, historic sites, and local food
+      travel.
+    criteria_true: >-
+      The item recommends or describes a place to visit, a route or itinerary,
+      a historic site, or a local travel experience.
+    criteria_false: >-
+      The item is about travel industry business, remote work, or outdoor
+      activity without a destination or itinerary focus.
+    reason_hint: covers a destination, itinerary, historic site, or day trip
+    weight: 1.0
+    enabled: true
+
+  - id: gadgets-gear
+    name: Gadgets & Gear
+    description: >-
+      Consumer technology, hobby gear, reviews, repairability, and buying
+      guides.
+    criteria_true: >-
+      The item reviews, compares, or explains a consumer device or hobby gear
+      item and whether it is worth buying or repairing.
+    criteria_false: >-
+      The item is industry strategy, policy, software development, or an
+      accessory mentioned only in passing.
+    reason_hint: covers a device, gear review, repair, or buying decision
+    weight: 0.9
+    enabled: true
+
+  - id: science-space
+    name: Science & Space
+    description: >-
+      Scientific discoveries, space missions, physics, natural history, and
+      accessible explainers.
+    criteria_true: >-
+      The item reports a scientific discovery, space mission, natural-history
+      finding, or explains a scientific phenomenon.
+    criteria_false: >-
+      The item is health or medical advice, technology business news, or
+      science fiction entertainment.
+    reason_hint: covers a discovery, space mission, or science explainer
+    weight: 0.9
+    enabled: true
+
+  - id: local-culture-events
+    name: Local Culture & Events
+    description: >-
+      Exhibitions, festivals, concerts, fairs, and neighborhood guides.
+    criteria_true: >-
+      The item announces or previews an exhibition, festival, concert, fair,
+      or local cultural event or neighborhood.
+    criteria_false: >-
+      The item is a general product announcement, a place profile without an
+      event, or arts business news.
+    reason_hint: covers an exhibition, festival, concert, fair, or local guide
+    weight: 0.8
+    enabled: true

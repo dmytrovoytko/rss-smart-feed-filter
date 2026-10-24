@@ -1,0 +1,138 @@
+id: ds.v1
+name: Data Scientist
+kind: work
+version: 1
+threshold: 0.55
+max_categories: 16
+seed: true
+description: >
+  Professional reading profile for data scientists and ML practitioners.
+  Prefers methods, production practice, analytics, and responsible AI over
+  general technology news, hiring, funding, and product marketing.
+exclude_hints:
+  - hiring, recruiting, and career advice
+  - funding, acquisitions, and business news
+  - consumer gadgets and general technology policy
+  - health or medical advice
+categories:
+  - id: ml-research
+    name: ML Methods & Research
+    description: >-
+      New machine-learning methods, architectures, training techniques,
+      benchmarks, or results from research papers and research labs.
+    criteria_true: >-
+      The item reports or analyzes a machine-learning method, model,
+      benchmark, training technique, or research finding.
+    criteria_false: >-
+      The item is product news, production operations, business news, career
+      advice, or not about machine-learning methods.
+    reason_hint: covers methods, architectures, benchmarks, or research findings
+    weight: 1.3
+    enabled: true
+
+  - id: llm-genai
+    name: LLMs & Generative AI
+    description: >-
+      Large language models and generative AI: prompting, agents, retrieval,
+      fine-tuning, evaluation, model releases, and LLM applications.
+    criteria_true: >-
+      The item is substantially about large language models, generative AI,
+      agents, prompting, RAG, or LLM applications and releases.
+    criteria_false: >-
+      The item is about classical machine learning, analytics, infrastructure,
+      or general software engineering without a generative-AI focus.
+    reason_hint: covers LLMs, agents, prompting, RAG, or generative-AI releases
+    weight: 1.3
+    enabled: true
+
+  - id: mlops-deployment
+    name: MLOps & Deployment
+    description: >-
+      Operating ML in production: model serving, deployment, monitoring,
+      drift, feature stores, registries, retraining, and inference
+      infrastructure.
+    criteria_true: >-
+      The item focuses on deploying, serving, monitoring, or operating
+      machine-learning models and pipelines in production.
+    criteria_false: >-
+      The item is primarily a new modeling result, a generic data pipeline, or
+      a product announcement without production ML operations.
+    reason_hint: covers serving, monitoring, drift, or production ML operations
+    weight: 1.1
+    enabled: true
+
+  - id: experimentation-causal
+    name: Experimentation & Causal Inference
+    description: >-
+      A/B testing, causal inference, lift measurement, experiment design,
+      power analysis, uplift modeling, and decision science.
+    criteria_true: >-
+      The item is about designing, running, or analyzing controlled experiments,
+      causal effects, lift, or measurement of interventions.
+    criteria_false: >-
+      The item is about dashboards or descriptive metrics without an experiment,
+      causal, or lift-measurement focus.
+    reason_hint: covers A/B tests, causal effects, lift, or experiment design
+    weight: 1.1
+    enabled: true
+
+  - id: data-engineering
+    name: Data Engineering & Pipelines
+    description: >-
+      Data pipelines, warehouses, dbt, Spark, streaming, orchestration, data
+      modeling, data quality, and platform architecture.
+    criteria_true: >-
+      The item is substantially about building, modeling, orchestrating, or
+      operating data pipelines and data platforms.
+    criteria_false: >-
+      The item is about model research, analytics interpretation, or business
+      intelligence without a data-platform focus.
+    reason_hint: covers pipelines, warehouses, dbt, Spark, or data platforms
+    weight: 1.0
+    enabled: true
+
+  - id: ds-tooling
+    name: DS Tooling & Libraries
+    description: >-
+      Libraries, packages, notebooks, and developer tools used by data
+      scientists and ML engineers, such as pandas, PyTorch, scikit-learn,
+      and vector databases.
+    criteria_true: >-
+      The item reviews or explains a data-science or ML library, package,
+      notebook workflow, or developer tool.
+    criteria_false: >-
+      The item is a research result, an analytics article, or infrastructure
+      operations without a tooling focus.
+    reason_hint: covers data-science libraries, notebooks, or ML tooling
+    weight: 1.0
+    enabled: true
+
+  - id: analytics-viz
+    name: Analytics & Visualization
+    description: >-
+      Business analytics, KPI and metric design, dashboards, reporting, and
+      data visualization.
+    criteria_true: >-
+      The item is about interpreting business data, designing metrics or KPIs,
+      dashboards, reporting, or visualization.
+    criteria_false: >-
+      The item is about model research, production ML operations, or data
+      pipelines without an analytics or visualization focus.
+    reason_hint: covers KPIs, dashboards, reporting, or data visualization
+    weight: 0.9
+    enabled: true
+
+  - id: responsible-ai-eval
+    name: Responsible AI & Evaluation
+    description: >-
+      Responsible AI, model evaluation and safety, bias, privacy,
+      accountability, governance, and red teaming.
+    criteria_true: >-
+      The item is substantially about evaluating, auditing, governing, or
+      making AI systems safer, fairer, more private, or more accountable.
+    criteria_false: >-
+      The item is only a model capability announcement or general commentary
+      without an evaluation, safety, or governance focus.
+    reason_hint: covers evaluation, safety, bias, privacy, or governance
+    weight: 0.9
+    enabled: true
