@@ -67,11 +67,14 @@ categories:
       A/B testing, causal inference, lift measurement, experiment design,
       power analysis, uplift modeling, and decision science.
     criteria_true: >-
-      The item is about designing, running, or analyzing controlled experiments,
-      causal effects, lift, or measurement of interventions.
+      The item is about designing, running, or analyzing a controlled experiment
+      or causal-inference study, including A/B tests, uplift or lift studies,
+      intervention measurement, counterfactual or decision-science analyses,
+      power analysis, or experiment design, and measuring its causal or lift
+      effect.
     criteria_false: >-
-      The item is about dashboards or descriptive metrics without an experiment,
-      causal, or lift-measurement focus.
+      The item is about describing or designing business metrics, dashboards, or
+      reporting, without an experiment, causal-inference analysis, or lift study.
     reason_hint: covers A/B tests, causal effects, lift, or experiment design
     weight: 1.1
     enabled: true
@@ -98,11 +101,13 @@ categories:
       scientists and ML engineers, such as pandas, PyTorch, scikit-learn,
       and vector databases.
     criteria_true: >-
-      The item reviews or explains a data-science or ML library, package,
-      notebook workflow, or developer tool.
+      The item reviews or explains the use of a specific data-science or ML
+      library, package, notebook workflow, or developer tool for a data-science
+      or ML task, including how it is configured or applied in that workflow.
     criteria_false: >-
-      The item is a research result, an analytics article, or infrastructure
-      operations without a tooling focus.
+      The item is a research result, an LLM application or agent development
+      discussion, an analytics article, or infrastructure operations without a
+      data-science tooling focus.
     reason_hint: covers data-science libraries, notebooks, or ML tooling
     weight: 1.0
     enabled: true
@@ -128,11 +133,13 @@ categories:
       Responsible AI, model evaluation and safety, bias, privacy,
       accountability, governance, and red teaming.
     criteria_true: >-
-      The item is substantially about evaluating, auditing, governing, or
-      making AI systems safer, fairer, more private, or more accountable.
+      The item is substantially about evaluating, auditing, red-teaming, or
+      governing AI systems, including model evaluation, bias or fairness
+      testing, privacy or safety risk assessment, accountability, or governance.
     criteria_false: >-
-      The item is only a model capability announcement or general commentary
-      without an evaluation, safety, or governance focus.
+      The item is only a model capability announcement, research advance, or
+      general commentary without an evaluation, safety, bias, privacy,
+      governance, or red-teaming focus.
     reason_hint: covers evaluation, safety, bias, privacy, or governance
     weight: 0.9
     enabled: true

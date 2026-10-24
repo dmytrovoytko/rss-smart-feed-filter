@@ -257,6 +257,7 @@ def run_live(args, profiles, items):
     latencies = []
     failures = []
     total = len(items)
+    started0 = time.perf_counter()
     for index, item in enumerate(items, 1):
         profile = profiles[item["profile"]]
         state = build_state(item, args.state_chars)
@@ -282,6 +283,8 @@ def run_live(args, profiles, items):
         }
         if index % 10 == 0 or index == total:
             print(f"[{index}/{total}] {item['id']} {elapsed:.2f}s", file=sys.stderr)
+    elapsed0 = time.perf_counter() - started0
+    print(f"Total time: {elapsed0:.2f}s", file=sys.stderr)
 
     results = {}
     for profile_id, profile in profiles.items():
