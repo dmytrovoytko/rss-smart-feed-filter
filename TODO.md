@@ -42,6 +42,7 @@
     - Security and privacy rules match the project and contain no secrets or local paths.
   - Tags: #docs #setup
   - Assignee: @owner
+  - Completed: 2026-10-24 17:35 UTC
   - Verified by: @owner, @qa
   - Evidence: AGENTS.md contains project-specific overview, architecture, constraints, commands, repository map, security rules, and documentation links. `.venv/bin/python -m unittest discover -s tests -v` passed 57 tests; `.venv/bin/ruff check .` passed.
   - Resolution: Finalized AGENTS.md against the bootstrap checklist; no placeholders remain, the repository map matches the repository, and commands are verified with the local `.venv`.
@@ -65,8 +66,9 @@
     - Lock paths match `_docs/process.md` (see section "Claim with an atomic lock").
     - All relative links resolve.
   - Tags: #docs #process #setup
-  - Assignee: @owner, @qa
-  - Verified by: @owner
+  - Assignee: @owner
+  - Completed: 2026-10-24 17:35 UTC
+  - Verified by: @owner, @qa
   - Evidence: `_docs/process.md` contains a self-contained process, task schema, lock protocol, and workflow rules; timestamp format (`YYYY-MM-DD HH:mm UTC`) and lock path (`.locks/<task-id>.lock/`) match this tracker and AGENTS.md.
   - Resolution: Finalized `_docs/process.md`; it is self-contained, matches the tracker schema, and has no template-only references.
   - Dependencies: None
@@ -197,6 +199,41 @@
   - Evidence: app/templates/base.html; app/templates/digest.html; app/templates/partials/job.html; app/static/app.css; app/static/htmx.min.js; app/static/favicon.png.
   - Resolution: Delivered the Jinja/HTMX interface for the digest, job progress, and retry flow.
 
+- [x] TASK-013: Lint fixes
+  - Priority: Low
+  - Acceptance criteria:
+    - `ruff check .` passes.
+  - Tags: #lint #cleanup
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:45 UTC
+  - Verified by: @owner
+  - Evidence: app/routes/pages.py; eval/harness.py; `ruff check .` passes.
+  - Resolution: Resolved lint findings.
+
+- [x] TASK-014: Automated test suite
+  - Priority: High
+  - Acceptance criteria:
+    - `tests/` covers classification, digest, feeds, foundation, and jobs.
+    - The suite runs with `python -m unittest discover -s tests -v`.
+  - Tags: #tests
+  - Assignee: @dev
+  - Completed: 2026-10-25 19:32 UTC
+  - Verified by: @owner
+  - Evidence: tests/test_classify.py; tests/test_digest.py; tests/test_feeds.py; tests/test_foundation.py; tests/test_jobs.py; 57 tests pass.
+  - Resolution: Added the regression suite covering the core services and data layer.
+
+- [x] TASK-015: README and screenshots
+  - Priority: Medium
+  - Acceptance criteria:
+    - README documents the workflow, architecture.
+    - Screenshots of the categorized digest are stored under `_docs/screenshots/`.
+  - Tags: #docs
+  - Assignee: @owner
+  - Completed: 2026-10-25 19:58 UTC
+  - Verified by: @owner
+  - Evidence: README.md; _docs/screenshots/.
+  - Resolution: Documented workflow and architecture, added UI screenshots.
+
 ## Open backlog
 
 ## Open questions
@@ -208,3 +245,4 @@
 - [2026-10-24 08:08 UTC] @owner: Created this tracker from the TODO.md skeleton and added initial tasks.
 - [2026-10-24 18:45 UTC] @owner: Completed and verified TASK-002 - TASK-006.
 - [2026-10-25 18:35 UTC] @owner: Completed and verified TASK-007 - TASK-012.
+- [2026-10-25 20:15 UTC] @owner: Completed and verified TASK-013 - TASK-015.
