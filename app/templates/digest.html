@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile.name }} digest · Feed Filter{% endblock %}
+
+{% block content %}
+  {% set enabled_feed_count = feeds|selectattr("enabled")|list|length %}
+  <section class="page-head" aria-labelledby="digest-title">
+    <div>
+      <p class="eyebrow">{{ profile.kind|capitalize }} profile</p>
+      <h1 id="digest-title">{{ profile.name }} digest</h1>
+      <p class="meta-line">
+        Last {{ digest.window_hours }} hours
+        <span aria-hidden="true">·</span>
+        Threshold {{ "%.2f"|format(digest.threshold) }}
+        <span aria-hidden="true">·</span>
+        {% if enabled_feed_count == feeds|length %}
+          {{ feeds|length }} source{% if feeds|length != 1 %}s{% endif %}
+        {% else %}
+          {{ enabled_feed_count }} of {{ feeds|length }} sources enabled
+        {% endif %}
+        <span aria-hidden="true">·</span>
+        {{ digest.window_items }} item{% if digest.window_items != 1 %}s{% endif %} in window
+        {% if digest.classified_items %}
+          <span aria-hidden="true">·</span>
+          {{ digest.classified_items }} classified
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="head-actions">
+      {% if job and job.status in ["queued", "running", "preview"] %}
+        <button class="button" type="button" disabled>Refreshing</button>
+      {% else %}
+        <form
+          method="post"
+          action="{{ request.url_for('start_refresh', profile_id=profile.id) }}"
+          hx-post="{{ request.url_for('start_refresh', profile_id=profile.id) }}"
+          hx-target="#job-panel"
+          hx-swap="outerHTML"
+        >
+          <button class="button" type="submit">Refresh</button>
+        </form>
+      {% endif %}
+      <p class="fine-print">Fetches enabled sources and classifies up to {{ settings.max_new_items }} new items per refresh.</p>
+    </div>
+  </section>
+
+  {% if job %}
+    {% include "partials/job.html" %}
+  {% else %}
+    <div id="job-panel"></div>
+  {% endif %}
+
+  {% if digest.pending_items and digest.classified_items %}
+    <p class="notice" role="status">
+      Refresh again to classify {{ digest.pending_items }} remaining item{% if digest.pending_items != 1 %}s{% endif %} in this window.
+    </p>
+  {% endif %}
+
+  {% for section in digest.sections %}
+<!--     <section class="panel digest-section" aria-labelledby="category-{{ section.id }}">
+      <div class="panel-head">
+        <div>
+          <h2 id="category-{{ section.id }}">{{ section.name }}</h2>
+          <p class="muted">
+            {{ section.entries|length }} match{% if section.entries|length != 1 %}es{% endif %}
+            <span aria-hidden="true">·</span>
+            weight {{ "%.1f"|format(section.weight) }}×
+          </p>
+        </div>
+        <span class="count-badge">{{ section.entries|length }}</span>
+      </div>
+ -->
+    <details class="panel digest-section" aria-labelledby="category-{{ section.id }}" open>
+      <summary>
+        <span>{{ section.name }}</span>
+        <span class="count-badge">{{ section.entries|length }}</span>
+      </summary>
+      <p class="digest-meta">
+        weight {{ "%.1f"|format(section.weight) }}×
+      </p>
+      <br>
+      <ol class="digest-list">
+        {% for item in section.entries %}
+          <li class="digest-item">
+            <div class="digest-body">
+              <h3>
+                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+              </h3>
+              <p class="digest-meta">
+                {{ item.source }}
+                <span aria-hidden="true">·</span>
+                {{ item.effective_at|human_time }}
+              </p>
+              <!-- <p class="digest-reason">{{ item.reason }}</p> -->
+
+              {% if item.tags|length != 1 %}
+              <!-- <ul class="tag-list" aria-label="Matched categories"> -->
+              <ul class="tag-list" aria-label="Also matched">
+                <li class="digest-meta">Also matched:</li>
+                {% for tag in item.tags %}
+                  {% if tag.name != section.name %}<li class="tag">{{ tag.name }}</li>{% endif %}
+                {% endfor %}
+              </ul>
+              {% endif %}
+            </div>
+            <span class="probability" title="Match probability">p={{ "%.2f"|format(item.probability) }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+    <!-- </section> -->
+    </details>
+  {% endfor %}
+
+  {% if digest.low_confidence %}
+    <details class="panel low-confidence">
+      <summary>
+        <span>Low confidence</span>
+        <span class="count-badge">{{ digest.low_confidence|length }}</span>
+      </summary>
+      <p class="muted low-confidence-note">
+        No enabled category reached the {{ "%.2f"|format(digest.threshold) }} threshold.
+        Ordered by best probability.
+      </p>
+      <ol class="digest-list">
+        {% for item in digest.low_confidence %}
+          <li class="digest-item">
+            <div class="digest-body">
+              <h3>
+                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+              </h3>
+              <p class="digest-meta">
+                {{ item.source }}
+                <span aria-hidden="true">·</span>
+                {{ item.effective_at|human_time }}
+              </p>
+              <p class="digest-reason">
+                Best match: {{ item.best_category }} (p={{ "%.2f"|format(item.probability) }})
+              </p>
+            </div>
+            <span class="probability probability-low" title="Best match probability">p={{ "%.2f"|format(item.probability) }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+    </details>
+  {% endif %}
+
+  {% if not digest.sections and not digest.low_confidence %}
+    <section class="empty-state" aria-labelledby="empty-title">
+      <div class="empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="presentation" focusable="false">
+          <path d="M10 12h28v5H10zm0 10h20v5H10zm0 10h12v5H10z"></path>
+        </svg>
+      </div>
+      <div>
+        {% if digest.window_items == 0 %}
+          <h2 id="empty-title">No items in this window</h2>
+          <p>Refresh to fetch more items from your sources.</p>
+        {% elif digest.classified_items == 0 %}
+          <h2 id="empty-title">{{ digest.window_items }} item{% if digest.window_items != 1 %}s{% endif %} waiting to be classified</h2>
+          <p>Refresh to classify up to {{ settings.max_new_items }} items with <code>{{ settings.tev_model }}</code>.</p>
+        {% elif digest.hide_low_confidence and digest.low_confidence_count %}
+          <h2 id="empty-title">No categorized items</h2>
+          <p>Low-confidence items are hidden in settings.</p>
+        {% else %}
+          <h2 id="empty-title">No categorized items</h2>
+          <p>Nothing in this window matched an enabled category.</p>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if feeds %}
+    <details class="panel sources-panel">
+      <summary>
+        <span>Sources</span>
+        <span class="count-badge">{{ feeds|length }}</span>
+      </summary>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Source</th>
+              <th scope="col">Last status</th>
+              <th scope="col">Last fetched</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for feed in feeds %}
+              <tr{% if not feed.enabled %} class="is-disabled"{% endif %}>
+                <td>
+                  <a href="{{ feed.url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}</a>
+                  {% if not feed.enabled %}<span class="muted">(disabled)</span>{% endif %}
+                </td>
+                <td>
+                  {% set status = feed.last_status or "not fetched" %}
+                  <span
+                    class="status-pill{% if 'error' in status %} status-error{% elif feed.last_fetched_at %} status-ok{% else %} status-idle{% endif %}"
+                  >{{ status }}</span>
+                </td>
+                <td>{{ feed.last_fetched_at|human_time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endif %}
+{% endblock %}

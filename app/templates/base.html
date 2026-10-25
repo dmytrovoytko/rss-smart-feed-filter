@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}Feed Filter{% endblock %}</title>
+  <link rel="stylesheet" href="{{ request.url_for('static', path='app.css') }}">
+  <script src="{{ request.url_for('static', path='htmx.min.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="{{ request.url_for('index') }}">
+        <span class="brand-mark" aria-hidden="true">FF</span>
+        <span>Feed Filter</span>
+      </a>
+
+      <div class="header-meta">
+        {% if profile is defined and profile %}
+          <span class="profile-pill">{{ profile.name }}</span>
+        {% endif %}
+        <nav aria-label="Primary">
+          <a href="{{ request.url_for('index') }}">Digest</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="shell">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <p>Local-first digest. No accounts, no telemetry.</p>
+    </div>
+  </footer>
+</body>
+</html>

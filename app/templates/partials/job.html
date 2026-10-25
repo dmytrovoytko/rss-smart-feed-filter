@@ -1,0 +1,112 @@
+{% set active = job.status in ["queued", "running", "preview"] %}
+{% set result = job.result %}
+<div
+  id="job-panel"
+  class="job-panel status-{{ job.status }}"
+  {% if active %}
+    hx-get="{{ request.url_for('job_fragment', job_id=job.id) }}"
+    hx-trigger="every 1s"
+    hx-swap="outerHTML"
+  {% endif %}
+>
+  {% if notice %}
+    <p class="notice" role="status">{{ notice }}</p>
+  {% endif %}
+
+  <div class="job-head">
+    <div>
+      <p class="eyebrow">Refresh job #{{ job.id }}</p>
+      <h2>
+        {% if job.status == "queued" %}
+          Queued
+        {% elif job.status == "running" %}
+          Refreshing and classifying
+        {% elif job.status == "preview" %}
+          Building preview
+        {% elif job.status == "done" %}
+          Refresh complete
+        {% else %}
+          Refresh failed
+        {% endif %}
+      </h2>
+    </div>
+    <span class="job-status job-status-{{ job.status }}">{{ job.status }}</span>
+  </div>
+
+  {% if active %}
+    {% set pct = ((100 * job.processed / job.total)|round(0, "floor")|int) if job.total else 0 %}
+    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ job.total or 0 }}" aria-valuenow="{{ job.processed }}" aria-label="Refresh progress">
+      <span class="progress-bar" style="width: {{ pct }}%"></span>
+    </div>
+    <p class="job-meta">
+      {{ job.processed }} of {{ job.total }} step{% if job.total != 1 %}s{% endif %} complete
+      <span aria-hidden="true">·</span>
+      updated {{ job.updated_at|human_time }}
+    </p>
+    <p class="fine-print">This page updates automatically. You can keep working while the refresh runs.</p>
+  {% elif job.status == "done" %}
+    {% if result %}
+      <p class="job-meta">
+        <strong>{{ result.new_items }}</strong> new item{% if result.new_items != 1 %}s{% endif %}
+        <span aria-hidden="true">·</span>
+        <strong>{{ result.updated_items }}</strong> updated
+        <span aria-hidden="true">·</span>
+        {{ result.feeds_ok + result.feeds_not_modified }} of {{ result.feeds_total }} source{% if result.feeds_total != 1 %}s{% endif %} succeeded
+        {% if result.feeds_not_modified %}
+          <span aria-hidden="true">·</span>
+          {{ result.feeds_not_modified }} not modified
+        {% endif %}
+        {% if result.feeds_failed %}
+          <span aria-hidden="true">·</span>
+          <span class="text-error">{{ result.feeds_failed }} failed</span>
+        {% endif %}
+      </p>
+      {% if result.unprocessed_items %}
+        <p class="notice" role="status">
+          {{ result.unprocessed_items }} unprocessed; refresh again.
+        </p>
+      {% endif %}
+      <p class="fine-print">
+        {% if result.classified_items is defined %}
+          {{ result.classified_items }} item{% if result.classified_items != 1 %}s{% endif %} classified
+          ({{ result.classified_categories }} category score{% if result.classified_categories != 1 %}s{% endif %})
+          <span aria-hidden="true">·</span>
+        {% endif %}
+        {{ result.pending_items }} item{% if result.pending_items != 1 %}s{% endif %} pending classification
+        <span aria-hidden="true">·</span>
+        {{ result.items_total }} stored total
+        <span aria-hidden="true">·</span>
+        {{ result.duration_s }}s
+        {% if result.retention and (result.retention.items_deleted or result.retention.jobs_deleted) %}
+          <span aria-hidden="true">·</span>
+          retention removed {{ result.retention.items_deleted }} item{% if result.retention.items_deleted != 1 %}s{% endif %}
+          and {{ result.retention.jobs_deleted }} job{% if result.retention.jobs_deleted != 1 %}s{% endif %}
+        {% endif %}
+      </p>
+      {% if result.errors %}
+        <details class="error-details">
+          <summary>Source errors ({{ result.errors|length }})</summary>
+          <ul>
+            {% for error in result.errors %}
+              <li><strong>{{ error.title }}</strong>: {{ error.error }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
+      <p class="fine-print">The digest reflects the classifications from this refresh.</p>
+    {% else %}
+      <p class="job-meta">The job finished without a result payload.</p>
+    {% endif %}
+  {% else %}
+    <p class="job-error" role="alert">{{ job.error or "The refresh failed without an error message." }}</p>
+    <form
+      method="post"
+      action="{{ request.url_for('retry_job', job_id=job.id) }}"
+      hx-post="{{ request.url_for('retry_job', job_id=job.id) }}"
+      hx-target="#job-panel"
+      hx-swap="outerHTML"
+    >
+      <button class="button button-secondary" type="submit">Retry refresh</button>
+    </form>
+  {% endif %}
+</div>
