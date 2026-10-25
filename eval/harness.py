@@ -6,7 +6,7 @@ import resource
 import statistics
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
@@ -112,7 +112,7 @@ class Client:
             raise SystemExit(
                 f"cannot reach Ollama at {self.base_url}: {exc}\n"
                 "Start it with `ollama serve` and try again."
-            )
+            ) from exc
         names = {m.get("name") for m in tags.json().get("models", [])}
         if self.model not in names:
             raise SystemExit(
@@ -329,7 +329,7 @@ def run_live(args, profiles, items):
 
     harness_rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
     report = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "model": args.model,
         "ollama_version": version.get("version"),
         "base_url": args.base_url,
