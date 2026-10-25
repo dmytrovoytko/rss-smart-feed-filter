@@ -438,7 +438,7 @@ spec.md
 
 ### 9.5 Dependencies
 
-`fastapi`, `uvicorn`, `jinja2`, `python-multipart`, `feedparser`, `requests`, `pyyaml`, `pydantic`, `python-dateutil`; `pytest` and `ruff` for development.
+`fastapi`, `uvicorn`, `jinja2`, `python-multipart`, `feedparser`, `requests`, `pyyaml`, `pydantic`, `python-dateutil`; Python's built-in `unittest` and `ruff` for development.
 
 The model runs outside the app in Ollama. No model weights are bundled.
 

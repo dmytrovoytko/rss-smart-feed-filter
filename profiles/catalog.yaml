@@ -1,0 +1,55 @@
+version: 1
+feeds:
+  ds.v1:
+    - title: arXiv cs.LG
+      url: https://rss.arxiv.org/rss/cs.LG
+    - title: arXiv stat.ML
+      url: https://rss.arxiv.org/rss/stat.ML
+    - title: KDnuggets
+      url: https://www.kdnuggets.com/feed
+    - title: MIT News AI
+      url: https://news.mit.edu/rss/topic/artificial-intelligence2
+    - title: Simon Willison
+      url: https://simonwillison.net/atom/everything/
+    - title: Google AI Blog
+      url: https://blog.google/innovation-and-ai/technology/ai/rss/
+    - title: Analytics Vidhya
+      url: https://www.analyticsvidhya.com/feed/
+    - title: dbt Blog
+      url: https://www.getdbt.com/blog/feed.xml
+    - title: Data Engineering Weekly
+      url: https://www.dataengineeringweekly.com/feed
+    - title: Netflix Tech Blog
+      url: https://netflixtechblog.com/feed
+    - title: Databricks Blog
+      url: https://www.databricks.com/feed
+    - title: Occam's Razor
+      url: https://www.kaushik.net/avinash/feed/
+
+  fun.v1:
+    - title: Smitten Kitchen
+      url: https://feeds.feedburner.com/smittenkitchen
+    - title: Bon Appétit
+      url: https://www.bonappetit.com/feed/rss
+    - title: Literary Hub
+      url: https://lithub.com/feed/
+    - title: IndieWire
+      url: https://www.indiewire.com/feed/
+    - title: Pitchfork
+      url: https://pitchfork.com/feed/feed-news/rss
+    - title: CyclingTips (Velo)
+      url: https://velo.outsideonline.com/feed/
+    - title: Bikepacking.com
+      url: https://bikepacking.com/feed/
+    - title: Dicebreaker
+      url: https://www.dicebreaker.com/feed
+    - title: Polygon
+      url: https://www.polygon.com/feed/
+    - title: Make
+      url: https://makezine.com/feed/
+    - title: Atlas Obscura
+      url: https://www.atlasobscura.com/feeds/latest
+    - title: The Verge
+      url: https://www.theverge.com/rss/index.xml
+    - title: ScienceDaily
+      url: https://www.sciencedaily.com/rss/top/science.xml

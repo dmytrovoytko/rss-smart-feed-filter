@@ -1,0 +1,2100 @@
+[
+  {
+    "id": "ds-001",
+    "profile": "ds.v1",
+    "title": "Fivetran + dbt Labs Announces New Capabilities to Make Enterprise Data Agent-Ready at dbt Summit 2026",
+    "summary": "dbt v2, dbt State are GA and Fivetran + dbt Labs debuts Fivetran Context Layer, dbt Charts and a new open lakehouse vision",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "data-engineering"
+    ],
+    "score": 0.9749804470882498,
+    "probabilities": {
+      "ml-research": 0.009063911424603789,
+      "llm-genai": 0.003085438550328744,
+      "mlops-deployment": 0.0294582425031893,
+      "experimentation-causal": 0.008562203535797923,
+      "data-engineering": 0.9749804470882498,
+      "ds-tooling": 0.07835429878710834,
+      "analytics-viz": 0.30463892263065334,
+      "responsible-ai-eval": 0.0009882719911396016
+    },
+    "latency_s": 7.6655136400368065
+  },
+  {
+    "id": "ds-002",
+    "profile": "ds.v1",
+    "title": "Random Remasking Scales Masked Diffusion Inference",
+    "summary": "arXiv:2610.30744v1 Announce Type: new Abstract: Masked diffusion models (MDMs) generate sequences by progressively unmasking tokens, but errors introduced during decoding are typically irreversible. Recent work has shown that iterative correction can improve sample quality, yet existing theory fails to explain this given a learned, imperfect denoiser model. We re-formulate MDM inference as a Markov chain on the clean sequence space, defined by a remask-denoise kernel that randomly re-introduces masks and then denoises. This helps us analyze the actual denoising trajectory towards the data distribution. The analysis motivates Random Remask-Denoise (R$^2$D) inference, a purely test-time, finet",
+    "labels_src": [
+      "llm-genai",
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.2977366436663043,
+    "probabilities": {
+      "ml-research": 0.9982589566663879,
+      "llm-genai": 0.9968422479472101,
+      "mlops-deployment": 0.016041335581656144,
+      "experimentation-causal": 0.3287419506315131,
+      "data-engineering": 0.03621286569183945,
+      "ds-tooling": 0.1350454935633319,
+      "analytics-viz": 0.006006168722375727,
+      "responsible-ai-eval": 0.0037335520649001705
+    },
+    "latency_s": 8.486659182002768
+  },
+  {
+    "id": "ds-003",
+    "profile": "ds.v1",
+    "title": "Scaling AI is easy. Trusting it is hard.",
+    "summary": "As AI scales, cracks in data trust and governance start to show. Here's what breaks first, and what it takes to fix it.",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "llm-genai",
+      "mlops-deployment",
+      "responsible-ai-eval"
+    ],
+    "score": 1.2000774863632317,
+    "probabilities": {
+      "ml-research": 0.019703059384527467,
+      "llm-genai": 0.9231365279717167,
+      "mlops-deployment": 0.8662545407239325,
+      "experimentation-causal": 0.2146650509668674,
+      "data-engineering": 0.43248373256563777,
+      "ds-tooling": 0.013937611598906679,
+      "analytics-viz": 0.35706950808204574,
+      "responsible-ai-eval": 0.9214834288802973
+    },
+    "latency_s": 8.550001526018605
+  },
+  {
+    "id": "ds-004",
+    "profile": "ds.v1",
+    "title": "Fivetran + dbt Labs: The future of dbt Core v2.0",
+    "summary": "AI has changed the game. dbt is changing along with it. Learn more about dbt Core v2.0 and the future of dbt itself.",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "data-engineering"
+    ],
+    "score": 0.9845220884209683,
+    "probabilities": {
+      "ml-research": 0.01252578495867213,
+      "llm-genai": 0.013496015877351122,
+      "mlops-deployment": 0.033638142820359616,
+      "experimentation-causal": 0.1279747538227944,
+      "data-engineering": 0.9845220884209683,
+      "ds-tooling": 0.1676491348272414,
+      "analytics-viz": 0.4935482745168431,
+      "responsible-ai-eval": 0.0016839082083700348
+    },
+    "latency_s": 9.0880705290474
+  },
+  {
+    "id": "ds-005",
+    "profile": "ds.v1",
+    "title": "NEST: Nested Embedding Representation for Multiscale Clustering",
+    "summary": "arXiv:2610.30520v1 Announce Type: new Abstract: Real-world data often exhibits cluster structure at multiple resolutions, yet existing methods typically learn a single partition or construct an explicit hierarchy. Inspired by Matryoshka Representation Learning, we introduce NEST, an unsupervised framework that encodes coarse-to-fine structure within a single embedding. NEST jointly optimizes clustering and separation across nested prefix subspaces, enabling progressively finer distinctions as embedding dimensionality increases, with rank and within-cluster regularization that keep the embedding from collapsing. Empirically, distances in the learned embedding follow the hierarchy distance mor",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research"
+    ],
+    "score": 1.2997240616860146,
+    "probabilities": {
+      "ml-research": 0.9997877397584727,
+      "llm-genai": 0.021706034159780757,
+      "mlops-deployment": 0.0003052063193030523,
+      "experimentation-causal": 0.00574508810948435,
+      "data-engineering": 0.006014099310077208,
+      "ds-tooling": 0.01443029121725075,
+      "analytics-viz": 0.016033991466569097,
+      "responsible-ai-eval": 0.00020524825288296584
+    },
+    "latency_s": 10.089977407944389
+  },
+  {
+    "id": "ds-006",
+    "profile": "ds.v1",
+    "title": "Prediction Is Not Calibration: Item Parameter Recovery and Representation Coupling in Knowledge Tracing",
+    "summary": "arXiv:2610.30211v1 Announce Type: new Abstract: Knowledge tracing (KT) models can estimate item parameters through an item response decoder trained solely for next-response prediction, yet predictive accuracy does not guarantee parameter recovery. We study 2PL, GPCM, and NRM decoders paired with LSTM, Transformer, and DKVMN encoders. Response-model derivatives show why discrimination and option slope updates depend directly on the scale and spread of estimated ability. Affine logit identities show how item-dependent shifts and rescaling in estimated ability are absorbed into item parameters without changing response probabilities. In simulations, difficulty, mean threshold, and correct-optio",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research"
+    ],
+    "score": 1.298656743848653,
+    "probabilities": {
+      "ml-research": 0.9989667260374253,
+      "llm-genai": 0.22286229497316162,
+      "mlops-deployment": 0.005763661067693449,
+      "experimentation-causal": 0.042212015323146,
+      "data-engineering": 0.0063444625464003776,
+      "ds-tooling": 0.02132246882593545,
+      "analytics-viz": 0.019425923226720994,
+      "responsible-ai-eval": 0.003086171993365595
+    },
+    "latency_s": 9.81179687101394
+  },
+  {
+    "id": "ds-007",
+    "profile": "ds.v1",
+    "title": "Adaptive Deadline- and Energy-Aware Caching Algorithms in Dynamic Multi-UAV Edge Networks",
+    "summary": "arXiv:2610.30768v1 Announce Type: new Abstract: Content caching via unmanned aerial vehicles (UAVs) becomes one of the solutions to maintain content delivery when terrestrial infrastructure is unavailable or disrupted. However, existing caching approaches often focus primarily on cache-hit performance or average delivery delay, without jointly addressing spatially heterogeneous and time-varying demand, content-specific deadlines, and uneven communication-energy consumption across UAVs. To address these challenges, we formulate a dynamic deadline- and energy-aware cache placement and replacement problem that jointly considers deadline misses, UAV-side communication energy, and inter-UAV energ",
+    "labels_src": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "labels": [
+      "ml-research"
+    ],
+    "score": 1.1375072300225477,
+    "probabilities": {
+      "ml-research": 0.8750055615558059,
+      "llm-genai": 0.0005085652407476278,
+      "mlops-deployment": 0.00839079419085852,
+      "experimentation-causal": 0.06199211831353578,
+      "data-engineering": 0.006144300015918156,
+      "ds-tooling": 0.0014285177963059194,
+      "analytics-viz": 0.07002225211555964,
+      "responsible-ai-eval": 0.0006641592426963795
+    },
+    "latency_s": 9.77204416191671
+  },
+  {
+    "id": "ds-008",
+    "profile": "ds.v1",
+    "title": "Residual Calibration via Local Feature-Space Refinement",
+    "summary": "arXiv:2610.30652v1 Announce Type: cross Abstract: Deep neural networks often struggle to provide reliable confidence estimates, making post-hoc calibration essential for reliable decision-making. Existing post-hoc methods largely rely on score-based transformations, which improve marginal calibration but often fail to capture spatially varying miscalibration in local regions of the learned feature space. To address this gap, we propose Local Adaptive Probability Estimation (LAPE), a post-hoc residual calibration framework. Specifically, LAPE treats the global calibrator output as a stable anchor and refines the individual prediction by leveraging non-parametric local evidence from neighborin",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research"
+    ],
+    "score": 1.2988111109587976,
+    "probabilities": {
+      "ml-research": 0.9990854699683058,
+      "llm-genai": 0.25465592298895084,
+      "mlops-deployment": 0.008896193400239628,
+      "experimentation-causal": 0.029092534873887927,
+      "data-engineering": 0.0031470471887626566,
+      "ds-tooling": 0.0523576182063728,
+      "analytics-viz": 0.0193857804817523,
+      "responsible-ai-eval": 0.003629547241877105
+    },
+    "latency_s": 9.63503123598639
+  },
+  {
+    "id": "ds-009",
+    "profile": "ds.v1",
+    "title": "WhatIf-Bench: Benchmarking Intervention-Aware Time Series Forecasting",
+    "summary": "arXiv:2610.26582v2 Announce Type: replace-cross Abstract: Recent time series foundation models (TSFMs) can consume covariates in-context, extending zero-shot forecasting to problems driven by external factors. This enables scenario analysis: forecasting how a target responds to events that set covariates to chosen future values. Whether they can do this reliably is an open question. We introduce WhatIf-Bench, a benchmark measuring how well forecasters use covariates to forecast a target's response to future events. WhatIf-Bench is semi-synthetic: time series come from mechanistic simulators of data centers, power grids, road traffic, and water networks, with controlled covariate-target relat",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "experimentation-causal"
+    ],
+    "score": 1.298111869978569,
+    "probabilities": {
+      "ml-research": 0.9985475922912068,
+      "llm-genai": 0.31076832369295515,
+      "mlops-deployment": 0.001001688976197552,
+      "experimentation-causal": 0.6763857276934953,
+      "data-engineering": 0.003174082623634403,
+      "ds-tooling": 0.04017552570166967,
+      "analytics-viz": 0.06198557491079154,
+      "responsible-ai-eval": 0.016403586441365386
+    },
+    "latency_s": 10.072457320988178
+  },
+  {
+    "id": "ds-010",
+    "profile": "ds.v1",
+    "title": "Integrating Netflix\u2019s Foundation Model into Personalization applications",
+    "summary": "Authors: Divya Gadde , Ko-Jen Hsiao , Dhaval Patel and Moumita Bhattacharya The motivation for building the Netflix Foundation Model for personalization was laid out in this previous blog post. The Netflix homepage is powered by several specialized models and it requires significant time and resources to maintain and continue innovating on these individual models. Therefore, we decided to centralize member preference learning and have one powerful model learned from comprehensive user interaction histories and content data at a large scale and have this model distribute its learnings to other models. The previous two blog posts( 1 , 2 ) focus on the development of the Foundation Model and he",
+    "labels_src": [
+      "ml-research",
+      "mlops-deployment"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.2208622117910708,
+    "probabilities": {
+      "ml-research": 0.9391247783008236,
+      "llm-genai": 0.8215524769109132,
+      "mlops-deployment": 0.1264725583005907,
+      "experimentation-causal": 0.1440573417924245,
+      "data-engineering": 0.012890077259021093,
+      "ds-tooling": 0.004970822672779856,
+      "analytics-viz": 0.00995649736837042,
+      "responsible-ai-eval": 0.001967689370956981
+    },
+    "latency_s": 9.841962054022588
+  },
+  {
+    "id": "ds-011",
+    "profile": "ds.v1",
+    "title": "Named Entity Recognition Using Scikit-LLM",
+    "summary": "Build standardized custom NER pipelines in a few simple steps, powered by the reasoning capabilities of LLMs.",
+    "labels_src": [
+      "llm-genai",
+      "ds-tooling"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.2362713789845643,
+    "probabilities": {
+      "ml-research": 0.7773239627401374,
+      "llm-genai": 0.9509779838342801,
+      "mlops-deployment": 0.005192958542195653,
+      "experimentation-causal": 0.008927848582565548,
+      "data-engineering": 0.015415054045298754,
+      "ds-tooling": 0.532871448651467,
+      "analytics-viz": 0.007271928607072245,
+      "responsible-ai-eval": 0.001245334277421028
+    },
+    "latency_s": 8.735238258959725
+  },
+  {
+    "id": "ds-012",
+    "profile": "ds.v1",
+    "title": "LangChain vs. LlamaIndex vs. Building From Scratch: Here\u2019s What I Suggest",
+    "summary": "Choosing the right framework for your large language model application comes down to one question: what are you actually optimizing for?",
+    "labels_src": [
+      "llm-genai",
+      "ds-tooling"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.2925948792714579,
+    "probabilities": {
+      "ml-research": 0.19411555939264788,
+      "llm-genai": 0.9943037532857367,
+      "mlops-deployment": 0.1726611863768087,
+      "experimentation-causal": 0.10748778571989669,
+      "data-engineering": 0.02608167970225395,
+      "ds-tooling": 0.2801822563374435,
+      "analytics-viz": 0.11273930170381954,
+      "responsible-ai-eval": 0.005230922922601243
+    },
+    "latency_s": 8.875751308049075
+  },
+  {
+    "id": "ds-013",
+    "profile": "ds.v1",
+    "title": "Claude Haiku 5.5: What\u2019s New and How to Use It for Fast, Cheap AI Workflows",
+    "summary": "Claude Haiku 5.5 cuts list prices by 90% and adds adaptive thinking and a 1M token context window. Learn what broke from Haiku 4.5, and build classification, extraction, and sub-agent workflows in Python using the new API.",
+    "labels_src": [
+      "llm-genai"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.2995035804296236,
+    "probabilities": {
+      "ml-research": 0.2574779903324194,
+      "llm-genai": 0.9996181387920181,
+      "mlops-deployment": 0.018050533723681237,
+      "experimentation-causal": 0.00421343070211789,
+      "data-engineering": 0.10835635043656715,
+      "ds-tooling": 0.560439670346182,
+      "analytics-viz": 0.020632706758407414,
+      "responsible-ai-eval": 0.0008509109990376292
+    },
+    "latency_s": 9.090749502996914
+  },
+  {
+    "id": "ds-014",
+    "profile": "ds.v1",
+    "title": "Google Open-Sources Harness\u00b2: Self-Improving AI Agents Without Retraining",
+    "summary": "Google's Harness\u00b2 lets AI agents improve their prompts, tools, memory, and scripts through two recursive loops without touching model weights. Learn more, including how to run the free demo yourself.",
+    "labels_src": [
+      "llm-genai"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.297125404186222,
+    "probabilities": {
+      "ml-research": 0.8753836943489182,
+      "llm-genai": 0.9977887724509399,
+      "mlops-deployment": 0.017226463086588425,
+      "experimentation-causal": 0.06044657790636546,
+      "data-engineering": 0.0017248719818718445,
+      "ds-tooling": 0.014072171980062909,
+      "analytics-viz": 0.003298877018793556,
+      "responsible-ai-eval": 0.005574028037544541
+    },
+    "latency_s": 9.106486447970383
+  },
+  {
+    "id": "ds-015",
+    "profile": "ds.v1",
+    "title": "A Practical Guide to Harness Engineering: Building the System Around the Model",
+    "summary": "An AI coding agent can write a function in seconds. But a working feature takes more than generated code. The agent needs to understand the project, find the right files, use tools safely, and check whether its changes work. A model on its own does none of that. It sees only the text it is [\u2026] The post A Practical Guide to Harness Engineering: Building the System Around the Model appeared first on Analytics Vidhya .",
+    "labels_src": [
+      "llm-genai"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 0.8899272315118079,
+    "probabilities": {
+      "ml-research": 0.01671534313864412,
+      "llm-genai": 0.6845594088552368,
+      "mlops-deployment": 0.09627130481707823,
+      "experimentation-causal": 0.038520337529134405,
+      "data-engineering": 0.024922170819100302,
+      "ds-tooling": 0.0033215436877294556,
+      "analytics-viz": 0.011642904549238067,
+      "responsible-ai-eval": 0.005149978797032141
+    },
+    "latency_s": 9.405568971065804
+  },
+  {
+    "id": "ds-016",
+    "profile": "ds.v1",
+    "title": "OpenAI Decisions API Tutorial for Building Decision Agents",
+    "summary": "Imagine building an AI agent that has to decide whether a customer complaint needs human intervention, which department should handle a query, or whether a submitted delivery photo is valid. Getting these decisions right matters. A false positive can trigger an unnecessary escalation, while a false negative can let a genuine issue slip through. Traditionally, [\u2026] The post OpenAI Decisions API Tutorial for Building Decision Agents appeared first on Analytics Vidhya .",
+    "labels_src": [
+      "llm-genai"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.0072185143467742,
+    "probabilities": {
+      "ml-research": 0.061852296622864976,
+      "llm-genai": 0.7747834725744417,
+      "mlops-deployment": 0.020163408527973128,
+      "experimentation-causal": 0.3286413643608589,
+      "data-engineering": 0.005854282711837566,
+      "ds-tooling": 0.01740858635892189,
+      "analytics-viz": 0.048576686744646956,
+      "responsible-ai-eval": 0.03466993434760237
+    },
+    "latency_s": 9.327117783017457
+  },
+  {
+    "id": "ds-017",
+    "profile": "ds.v1",
+    "title": "JEV as a Hallucination Filter: Let the LLM Write, Let JEV Check",
+    "summary": "The majority of hallucination checks begin following the initial writing of an answer by the LLM. We then hold someone up to a second standard of judgment, or we hand over dangerous cases to a person. That works but that is looking at the solution only as one-off. What if the LLM generates five different [\u2026] The post JEV as a Hallucination Filter: Let the LLM Write, Let JEV Check appeared first on Analytics Vidhya .",
+    "labels_src": [
+      "llm-genai"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.296446462974799,
+    "probabilities": {
+      "ml-research": 0.35165974783617066,
+      "llm-genai": 0.9972665099806146,
+      "mlops-deployment": 0.05200189430515028,
+      "experimentation-causal": 0.07607226263838916,
+      "data-engineering": 0.010972402719778281,
+      "ds-tooling": 0.0023508138595678663,
+      "analytics-viz": 0.06307017190803173,
+      "responsible-ai-eval": 0.4919473935661442
+    },
+    "latency_s": 9.713251488050446
+  },
+  {
+    "id": "ds-018",
+    "profile": "ds.v1",
+    "title": "LLM Batching Explained: Static vs Dynamic vs Continuous Batching",
+    "summary": "Imagine four people booking a ride to the same destination. If each person takes a separate taxi, four vehicles make the same trip. But if they travel together in a bus, everyone reaches the destination in a single trip. The bus carries more people at once and makes better use of the resources. Batching in [\u2026] The post LLM Batching Explained: Static vs Dynamic vs Continuous Batching appeared first on Analytics Vidhya .",
+    "labels_src": [
+      "llm-genai",
+      "mlops-deployment"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.0081373398932527,
+    "probabilities": {
+      "ml-research": 0.3722974679387665,
+      "llm-genai": 0.7754902614563483,
+      "mlops-deployment": 0.4295452729817772,
+      "experimentation-causal": 0.25254315013922113,
+      "data-engineering": 0.5540854799386029,
+      "ds-tooling": 0.028144613062490272,
+      "analytics-viz": 0.4268553348117712,
+      "responsible-ai-eval": 0.0022665725552982966
+    },
+    "latency_s": 9.381144665996544
+  },
+  {
+    "id": "ds-019",
+    "profile": "ds.v1",
+    "title": "The Lifecycle of LLM-as-a-Judge: Building, Aligning, and Monitoring at scale",
+    "summary": "By Emma Yanyang Kong , JJ Tan , Ishan Gupta , Lars Olds , Claire Campbell , David Fagnan , Ratna Kavuri , Rohan Gosain , Veli Balin , Minsu Jang , Louis Garcia Introduction Any team generating text with an LLM at scale hits the same problem. You cannot evaluate everything manually. You don't know which outputs are great, which are mediocre, and which are harmful, because you simply cannot read them all. The standard solution is LLM-as-a-Judge , a second model that scores the first model\u2019s output as a proxy for human raters. It is fast, cheap, and easy to deploy. However, it introduces a new and critical question: Who evaluates the evaluator? Furthermore, if the judge drifts, quietly degradin",
+    "labels_src": [
+      "llm-genai",
+      "mlops-deployment"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai",
+      "mlops-deployment",
+      "responsible-ai-eval"
+    ],
+    "score": 1.2970791705184,
+    "probabilities": {
+      "ml-research": 0.9002010965573835,
+      "llm-genai": 0.9977532080910768,
+      "mlops-deployment": 0.8193019498319006,
+      "experimentation-causal": 0.21949300259170645,
+      "data-engineering": 0.022918524874305984,
+      "ds-tooling": 0.05116786302060768,
+      "analytics-viz": 0.038833719654309796,
+      "responsible-ai-eval": 0.8376599106293285
+    },
+    "latency_s": 9.846847641980276
+  },
+  {
+    "id": "ds-020",
+    "profile": "ds.v1",
+    "title": "AI Mindmeld: A Latent Interconnect Protocol",
+    "summary": "arXiv:2610.30215v1 Announce Type: cross Abstract: LLMs can act as scientific agents using tools to consult specialists and run experiments. Yet specialist information must enter their context, generally as text, images, audio or video: a bottleneck between models with rich, high-dimensional representations. We advocate direct representation exchange: a mindmeld conveying many properties, including information an LLM would not think to request. It should be extensible to new specialists, flexible across questions and tasks, and compositional across independently connected specialists without joint training. The Latent Interconnect Protocol (LIP) learns connectors mapping specialist representa",
+    "labels_src": [
+      "llm-genai",
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.2976519976611953,
+    "probabilities": {
+      "ml-research": 0.9925729244503273,
+      "llm-genai": 0.9981938443547657,
+      "mlops-deployment": 0.002792262056760384,
+      "experimentation-causal": 0.014938747279438436,
+      "data-engineering": 0.0020581343409033265,
+      "ds-tooling": 0.0008291576866701817,
+      "analytics-viz": 0.006042556991947402,
+      "responsible-ai-eval": 0.0010419153854746815
+    },
+    "latency_s": 9.76786057499703
+  },
+  {
+    "id": "ds-021",
+    "profile": "ds.v1",
+    "title": "How dbt State cuts warehouse compute and speeds up every run",
+    "summary": "How Fanatics cut warehouse compute by only rebuilding what's changed",
+    "labels_src": [
+      "data-engineering",
+      "mlops-deployment"
+    ],
+    "labels": [
+      "data-engineering"
+    ],
+    "score": 0.9861113225133764,
+    "probabilities": {
+      "ml-research": 0.0787496929999989,
+      "llm-genai": 0.025635392424080788,
+      "mlops-deployment": 0.20659250376128527,
+      "experimentation-causal": 0.17808122949291524,
+      "data-engineering": 0.9861113225133764,
+      "ds-tooling": 0.10754983164808106,
+      "analytics-viz": 0.20755959655056802,
+      "responsible-ai-eval": 0.003567777076294731
+    },
+    "latency_s": 8.938995427102782
+  },
+  {
+    "id": "ds-022",
+    "profile": "ds.v1",
+    "title": "AI Runtime is Generally Available",
+    "summary": "Today, we\u2019re excited to announce the General Availability of AI Runtime (AIR), bringing...",
+    "labels_src": [
+      "mlops-deployment"
+    ],
+    "labels": [
+      "llm-genai",
+      "mlops-deployment"
+    ],
+    "score": 1.2799867559764666,
+    "probabilities": {
+      "ml-research": 0.002899351987841153,
+      "llm-genai": 0.9846051969049743,
+      "mlops-deployment": 0.982895813798251,
+      "experimentation-causal": 0.09421702373101824,
+      "data-engineering": 0.042039155615766814,
+      "ds-tooling": 0.04154026937286576,
+      "analytics-viz": 0.09121405343346195,
+      "responsible-ai-eval": 0.0016922944627301322
+    },
+    "latency_s": 9.03414999996312
+  },
+  {
+    "id": "ds-023",
+    "profile": "ds.v1",
+    "title": "Introducing Agent Memory on Databricks",
+    "summary": "Today we're introducing agent memory on Agent Bricks, Databricks' agent developer...",
+    "labels_src": [
+      "mlops-deployment",
+      "llm-genai"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.2001998703682855,
+    "probabilities": {
+      "ml-research": 0.019989186932993307,
+      "llm-genai": 0.9232306695140657,
+      "mlops-deployment": 0.26223214922408317,
+      "experimentation-causal": 0.1685367748323624,
+      "data-engineering": 0.24693711461886783,
+      "ds-tooling": 0.27698837399939524,
+      "analytics-viz": 0.02375038035524329,
+      "responsible-ai-eval": 0.0015792654436952917
+    },
+    "latency_s": 8.660361672984436
+  },
+  {
+    "id": "ds-024",
+    "profile": "ds.v1",
+    "title": "Supercomputing researchers document evolution of AI hardware",
+    "summary": "As artificial intelligence transforms industries and national security, understanding the latest hardware capabilities is important for maintainind technological advantage. AI accelerators \u2014 specialized systems designed to speed up capabilities such as neural networks, deep learning, and machine learning \u2014 have been a major area of development for nearly a decade. Since 2018, team from the Lincoln Laboratory Supercomputing Center (LLSC) has been conducting the Lincoln AI Computing Survey (LAICS, pronounced \"lace\"). Six papers later, LAICS continues to summarize current commercial AI accelerators and compare their peak performance and peak power. \"About eight years ago, we saw a sharp rise in",
+    "labels_src": [
+      "ml-research",
+      "experimentation-causal"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.2614373462927079,
+      "llm-genai": 0.014970468883746438,
+      "mlops-deployment": 0.005231617718760364,
+      "experimentation-causal": 0.02916119657010511,
+      "data-engineering": 0.0005144304372038098,
+      "ds-tooling": 0.0010513178501355836,
+      "analytics-viz": 0.005362856027279778,
+      "responsible-ai-eval": 0.0006172612489416253
+    },
+    "latency_s": 9.470629450050183
+  },
+  {
+    "id": "ds-025",
+    "profile": "ds.v1",
+    "title": "Measuring the Impact of Personalized Recommendations",
+    "summary": "By Kevin Zielnicki, Guy Aridor, Aur\u00e9lien Bibaut, Allen Tran, Winston Chou, and Nathan Kallus Introduction Personalization is everywhere on the internet. It shapes the products we discover, the stories we read, the music we hear, and the movies and TV shows we watch. At Netflix, personalization has been central to the member experience for decades \u2014 from the Netflix Prize to our modern recommender system that helps members navigate a large and constantly changing catalog. But personalization is not only an algorithmic problem, it is also a measurement problem. How do we know how much value personalization creates? More precisely, how do we separate the appeal of a title from the value created",
+    "labels_src": [
+      "experimentation-causal",
+      "analytics-viz"
+    ],
+    "labels": [
+      "experimentation-causal",
+      "analytics-viz"
+    ],
+    "score": 0.6853593484220973,
+    "probabilities": {
+      "ml-research": 0.06880977298337643,
+      "llm-genai": 0.004691645183664119,
+      "mlops-deployment": 0.011791281178998008,
+      "experimentation-causal": 0.6230539531109975,
+      "data-engineering": 0.003952774305399509,
+      "ds-tooling": 0.0025463449148829544,
+      "analytics-viz": 0.6873238763071967,
+      "responsible-ai-eval": 0.011284327956620885
+    },
+    "latency_s": 9.63998293201439
+  },
+  {
+    "id": "ds-026",
+    "profile": "ds.v1",
+    "title": "Google\u2019s Statistics: Heads They Win, Tails You Lose.",
+    "summary": "Google Brand Lift & Conversion Lift studies use the same underlying idea of statistical certainty. But certainty is not the same thing as answering the business question that matters most: if you spend the money again, how likely are you to reproduce the result? Let\u2019s start with a phrase that causes me to cringe every time I hear it: \u201cdirectional results.\u201d It sounds sophisticated. Nuanced. Even reasonable. But what does it actually mean? Answer: Just about anything you want it to mean! I was reminded of this while reading Google\u2019s official guidance on how to interpret Google/YouTube\u2019s Brand Lift, Search Lift, and Conversion Lift studies. It made me pause. Then sad. Read the last one carefull",
+    "labels_src": [
+      "experimentation-causal",
+      "analytics-viz"
+    ],
+    "labels": [
+      "experimentation-causal",
+      "analytics-viz"
+    ],
+    "score": 1.0696475775702416,
+    "probabilities": {
+      "ml-research": 0.11702352093459271,
+      "llm-genai": 0.009616488872457175,
+      "mlops-deployment": 0.03503435076285638,
+      "experimentation-causal": 0.9724068887002196,
+      "data-engineering": 0.0023032572911554495,
+      "ds-tooling": 0.004647921783681468,
+      "analytics-viz": 0.8255636291710431,
+      "responsible-ai-eval": 0.008944064591216931
+    },
+    "latency_s": 9.826523322961293
+  },
+  {
+    "id": "ds-027",
+    "profile": "ds.v1",
+    "title": "From analytics engineer to context engineer",
+    "summary": "First in a series on the shift from modeling data for dashboards to modeling context for agents. We start with our own Gong data.",
+    "labels_src": [
+      "data-engineering",
+      "analytics-viz"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.032060492328237856,
+      "llm-genai": 0.40620070628612526,
+      "mlops-deployment": 0.024489209669860987,
+      "experimentation-causal": 0.07094721639364888,
+      "data-engineering": 0.20658437530696178,
+      "ds-tooling": 0.038917814703066406,
+      "analytics-viz": 0.25538935890198694,
+      "responsible-ai-eval": 0.03246004476150731
+    },
+    "latency_s": 8.657897501019761
+  },
+  {
+    "id": "ds-028",
+    "profile": "ds.v1",
+    "title": "Building an Operational Ontology: An E-Commerce Walkthrough",
+    "summary": "Reads travel from a shared model to agents, apps, and people. Writes enter through an audited action gate and write back to the systems of record that own the state. This article is a walkthrough. On top of a single e-commerce scenario, it assembles a model that can carry writes governed by business rules: an operational ontology. Every scene in it runs in a minimal open-source reference implementation (TypeScript, MIT): https://github.com/gura105/operational-ontology The morning after the merger, there are two \u201corders\u201d Say an e-commerce company acquires a competitor. On Monday morning, the data team is holding two order systems. One keeps its orders in north.tbl_order, the other in south.SA",
+    "labels_src": [
+      "data-engineering"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.010384275683112235,
+      "llm-genai": 0.006066764964543382,
+      "mlops-deployment": 0.013047136205874804,
+      "experimentation-causal": 0.028427971799139404,
+      "data-engineering": 0.1156371187215498,
+      "ds-tooling": 0.03002547730124044,
+      "analytics-viz": 0.05028889477503457,
+      "responsible-ai-eval": 0.023198447918377198
+    },
+    "latency_s": 9.827399028930813
+  },
+  {
+    "id": "ds-029",
+    "profile": "ds.v1",
+    "title": "What an Ontology for AI Agents Actually Needs",
+    "summary": "The word ontology now covers almost every kind of semantic ambition in data and AI. It can mean a metrics layer that consistently calculates \u201crevenue\u201d. It can mean a data catalog with a glossary, lineage, and ownership. It can mean a learned context graph, an operational model of entities and actions, or a standards-based model of business meaning. Nimit Mehta\u2019s market map identifies five such categories. These artifacts are related, but they do not do the same job. A catalog can tell you who owns a table without telling an agent whether two records identify the same customer. A metric layer can calculate active-customer count without defining which action an agent may take for an active cus",
+    "labels_src": [
+      "data-engineering"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.2924399468376757,
+    "probabilities": {
+      "ml-research": 0.06414690968249681,
+      "llm-genai": 0.9941845744905197,
+      "mlops-deployment": 0.05002465082916269,
+      "experimentation-causal": 0.020651793581684553,
+      "data-engineering": 0.03696600968239915,
+      "ds-tooling": 0.0026927512155135694,
+      "analytics-viz": 0.2824323127169475,
+      "responsible-ai-eval": 0.023997156243371374
+    },
+    "latency_s": 9.81985441595316
+  },
+  {
+    "id": "ds-030",
+    "profile": "ds.v1",
+    "title": "Behind the Scenes: Evolving Netflix\u2019s Ads Event Pipeline for Live \u2014 Part II",
+    "summary": "By Yogesh Nagarur Introduction In Part 1 of this series , we shared how Netflix built the Ads Event pipeline and approached it as a system design problem: replacing fragmented pipelines with a centralized collection, enrichment, and a standard data contract. The result was Ads Event Publisher, the system that collects ad telemetry from client devices, enriches it with the context of the ad that was actually served, and publishes a single, unified stream of ad events to every downstream consumer: frequency capping, metrics, billing, measurement partners, and reporting. Any member viewing or account details that move through this pipeline end-to-end are encrypted and handled in accordance with",
+    "labels_src": [
+      "data-engineering"
+    ],
+    "labels": [
+      "data-engineering"
+    ],
+    "score": 0.995267286667046,
+    "probabilities": {
+      "ml-research": 0.02046582981282423,
+      "llm-genai": 0.0009487632174373354,
+      "mlops-deployment": 0.017869714995365635,
+      "experimentation-causal": 0.0065291676599044,
+      "data-engineering": 0.995267286667046,
+      "ds-tooling": 0.005200709021010988,
+      "analytics-viz": 0.19297681927507324,
+      "responsible-ai-eval": 0.004215047540211122
+    },
+    "latency_s": 9.768188041984104
+  },
+  {
+    "id": "ds-031",
+    "profile": "ds.v1",
+    "title": "Running Apache Spark experiments in my sleep (and on a plane)",
+    "summary": "By Prashanth Gedde Narayanaswamy As one of Netflix\u2019s largest and critical data pipelines, member-sessionizer consolidates tens of billions of hourly client events, encompassing user taps, playbacks, and engagement signals, into individual viewing sessions per profile. A quick two-week tuning effort spiraled into two months when standard approaches hit a wall. Because the failures only happened at full production scale, each test took hours, limiting me to just three or four attempts daily. The turning point was changing the goal: instead of trying to speed up a single run, I built a way to run and monitor multiple tests at once and track every result. That mindset led to an unconventional se",
+    "labels_src": [
+      "data-engineering"
+    ],
+    "labels": [
+      "experimentation-causal",
+      "data-engineering"
+    ],
+    "score": 1.0499080148908568,
+    "probabilities": {
+      "ml-research": 0.20393286110389128,
+      "llm-genai": 0.0014191320695829614,
+      "mlops-deployment": 0.4565176639655076,
+      "experimentation-causal": 0.9544618317189607,
+      "data-engineering": 0.9988088153480487,
+      "ds-tooling": 0.24750150281006972,
+      "analytics-viz": 0.12089011991080575,
+      "responsible-ai-eval": 0.0171939763211705
+    },
+    "latency_s": 10.414389727055095
+  },
+  {
+    "id": "ds-032",
+    "profile": "ds.v1",
+    "title": "Everything we announced at dbt Summit and why it matters",
+    "summary": "Every product announced at dbt Summit, from dbt v2 and dbt State to dbt Wizard and dbt Charts, and why each one matters.",
+    "labels_src": [
+      "data-engineering"
+    ],
+    "labels": [
+      "data-engineering",
+      "analytics-viz"
+    ],
+    "score": 0.9894339988470948,
+    "probabilities": {
+      "ml-research": 0.04540322903654578,
+      "llm-genai": 0.11433491503624309,
+      "mlops-deployment": 0.2620742444722808,
+      "experimentation-causal": 0.49444078466530994,
+      "data-engineering": 0.9894339988470948,
+      "ds-tooling": 0.1507350560313448,
+      "analytics-viz": 0.7392132591038364,
+      "responsible-ai-eval": 0.060231481109829246
+    },
+    "latency_s": 8.940074856043793
+  },
+  {
+    "id": "ds-033",
+    "profile": "ds.v1",
+    "title": "How to Process Large JSON Files in Python With ijson",
+    "summary": "I loaded a large JSON file in Python and watched memory jump from 43 MB to 808 MB. Here\u2019s what happened and how streaming changed everything.",
+    "labels_src": [
+      "ds-tooling"
+    ],
+    "labels": [
+      "ds-tooling"
+    ],
+    "score": 0.7669870225812775,
+    "probabilities": {
+      "ml-research": 0.008522722572069867,
+      "llm-genai": 0.0017820572061129423,
+      "mlops-deployment": 0.00513354851146709,
+      "experimentation-causal": 0.025572437222690314,
+      "data-engineering": 0.453884900797595,
+      "ds-tooling": 0.7669870225812775,
+      "analytics-viz": 0.010986092909863585,
+      "responsible-ai-eval": 0.0021024323551867073
+    },
+    "latency_s": 9.130870649009012
+  },
+  {
+    "id": "ds-034",
+    "profile": "ds.v1",
+    "title": "aggmetrics: Aggregating Classification Performance Measures for Machine Learning",
+    "summary": "arXiv:2610.30456v1 Announce Type: new Abstract: aggmetrics is a Python package that extends any binary performance measure expressed in the four confusion-matrix counts to multiclass, multilabel, ordinal, cost-sensitive, soft-label and cross-validation settings, by substituting one of four aggregation operators for what libraries usually expose as an average switch. The package also stores, for every measure, the structural properties that decide which identities apply to it, can infer those properties from a user-supplied formula, and uses them to warn when a measure is used where it does not behave as commonly assumed. Its test suite encodes the results of the companion theory as executabl",
+    "labels_src": [
+      "ds-tooling",
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "ds-tooling"
+    ],
+    "score": 1.1652763457068938,
+    "probabilities": {
+      "ml-research": 0.8963664197745336,
+      "llm-genai": 0.0016618241411331645,
+      "mlops-deployment": 0.004895973971671211,
+      "experimentation-causal": 0.010533965658346725,
+      "data-engineering": 0.0054403328221059415,
+      "ds-tooling": 0.9932421433421124,
+      "analytics-viz": 0.5038808996921788,
+      "responsible-ai-eval": 0.004520371710811438
+    },
+    "latency_s": 10.640390779008158
+  },
+  {
+    "id": "ds-035",
+    "profile": "ds.v1",
+    "title": "Smart KPIs: Accountability Over Outcomes Over Activity.",
+    "summary": "A couple of years ago, I was doing a Strategic Consulting engagement for a global company that operates in 75 countries. The scope was to build out a Marketing strategy for the next generation of success. I was immensely grateful for this fun and deeply challenging opportunity. In an early meeting with a sub team, they shared that the primary success of their Marketing campaign was the metric Cost Per Session . I\u2019d never heard of it. In. My. Life. And, I had a couple of decades of experience. I\u2019d worked with the largest companies on the planet. I\u2019d authored two bestselling books on Analytics, in multiple languages. I\u2019d helped invent entirely new Analytics tools!! The only CPS I knew was Cost",
+    "labels_src": [
+      "analytics-viz"
+    ],
+    "labels": [
+      "analytics-viz"
+    ],
+    "score": 0.8186403505123351,
+    "probabilities": {
+      "ml-research": 0.014230470492990702,
+      "llm-genai": 0.0016487466429775525,
+      "mlops-deployment": 0.015612502206584037,
+      "experimentation-causal": 0.07922994146956655,
+      "data-engineering": 0.006087813928941471,
+      "ds-tooling": 0.00730842509010685,
+      "analytics-viz": 0.90960038945815,
+      "responsible-ai-eval": 0.10516565509264544
+    },
+    "latency_s": 11.425270518986508
+  },
+  {
+    "id": "ds-036",
+    "profile": "ds.v1",
+    "title": "Google Analytics 2026: Unlocking New Features, Analysis.",
+    "summary": "Over the last year, the team at Google Analytics (GA) has released a cluster of features which extend GA\u2019s ability to power higher altitude, higher value decisions, along with new value for functions like Finance. Some of these capabilities are forward only. They collect/process data from the day you turn them on, and never backfill. So\u2026 As soon as you are done reading, get to activating! I\u2019ve picked four (plus three) features that will speed up your conversion from a Reporting Squirrel to an Analysis Ninja. This will get you into more meetings with Extremely Senior Leaders (ESLs). That should translate into more influence [and higher compensation for you!]. This post was first published as",
+    "labels_src": [
+      "analytics-viz"
+    ],
+    "labels": [
+      "analytics-viz"
+    ],
+    "score": 0.7963223289165907,
+    "probabilities": {
+      "ml-research": 0.004895342114831685,
+      "llm-genai": 0.0006560701335660504,
+      "mlops-deployment": 0.0019612983766061237,
+      "experimentation-causal": 0.10395347256826751,
+      "data-engineering": 0.0021740019022117494,
+      "ds-tooling": 0.00641777163466457,
+      "analytics-viz": 0.8848025876851008,
+      "responsible-ai-eval": 0.0012246502465699436
+    },
+    "latency_s": 9.861048026010394
+  },
+  {
+    "id": "ds-037",
+    "profile": "ds.v1",
+    "title": "Sports Marketing Measurement Playbook.",
+    "summary": "Last year, nearly all of the top 50 telecasts in the US were connected to sports. The 97th Oscars, SNL 50th, a 60 mins interview, an episode of The Floor and 67th Grammys were the exception. #27 was \u201cNFL Weather Delay,\u201d turns out we will watch anything with sports in the title. \ud83d\ude0a Sport is the last bastion of people watching live TV, and together. That is why streaming giants are getting into acquiring sports telecast rights. It is unsurprising then that marketers have been rushing into all sorts of sports advertising. Sponsorships of teams, dresses, balls/bats/cars/horses/sideboards/back panels for interviews. Running expensive paid media ads. Naming stadiums. And, more. At some point, a sma",
+    "labels_src": [
+      "analytics-viz",
+      "experimentation-causal"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.012133285260470295,
+      "llm-genai": 0.003498206861205268,
+      "mlops-deployment": 0.0029667585601480142,
+      "experimentation-causal": 0.18239309597762773,
+      "data-engineering": 0.0012271233571893112,
+      "ds-tooling": 0.0009664609745384169,
+      "analytics-viz": 0.34925004646148966,
+      "responsible-ai-eval": 0.0018078207641567183
+    },
+    "latency_s": 9.810023447033018
+  },
+  {
+    "id": "ds-038",
+    "profile": "ds.v1",
+    "title": "AI Ready? Google Ads Maturity Model.",
+    "summary": "In a world with fuel-efficient long-range motorcycles, do you insist on using horses for transportation? I\u2019m of course talking about the Google Ads platform. To help you assess whether your company is actually AI-ready, I built a Google Ads maturity model that scores both your capability and how widely that capability is deployed. Like it or not, Google has been AIfying their platform for some time. [Meta as well.] They are making it harder and harder for us to stay with how it used to be. Not such a bad thing, because to achieve better outcomes we can do less and the AI can do more. Hence, I admit to immense frustration when in meetings and online discussions, \u201cSearch marketing\u201d is still fr",
+    "labels_src": [
+      "analytics-viz"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.06036657630933779,
+      "llm-genai": 0.014165119614807348,
+      "mlops-deployment": 0.08640399377115959,
+      "experimentation-causal": 0.039391696487712284,
+      "data-engineering": 0.010081564798576446,
+      "ds-tooling": 0.013393529741025216,
+      "analytics-viz": 0.11742498670720436,
+      "responsible-ai-eval": 0.11177655732008843
+    },
+    "latency_s": 11.119575647986494
+  },
+  {
+    "id": "ds-039",
+    "profile": "ds.v1",
+    "title": "Automated screening of privacy risks in medical AI",
+    "summary": "arXiv:2610.30229v1 Announce Type: new Abstract: Medical artificial intelligence (AI) models are often shared without their training data, assuming this protects the patients who contributed them. However, a model can reveal whether a patient's records were used in training, a privacy breach known as a membership inference attack. This risk is usually reported as a cohort average, which can appear negligible while individual patients are almost certainly exposed. Identifying potentially vulnerable records before developing a production model could make privacy assessment more practical. We measured each patient's vulnerability to membership inference attack, across 7,789 models trained on six",
+    "labels_src": [
+      "responsible-ai-eval",
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "responsible-ai-eval"
+    ],
+    "score": 1.2911270268557768,
+    "probabilities": {
+      "ml-research": 0.9931746360429052,
+      "llm-genai": 0.014122274446063909,
+      "mlops-deployment": 0.04291371835526402,
+      "experimentation-causal": 0.4453288221082408,
+      "data-engineering": 0.005526045797276556,
+      "ds-tooling": 0.0020379605933318746,
+      "analytics-viz": 0.01379450811131766,
+      "responsible-ai-eval": 0.9961270859207257
+    },
+    "latency_s": 11.495029875077307
+  },
+  {
+    "id": "ds-040",
+    "profile": "ds.v1",
+    "title": "Policy Learning with Observational Data: The Case of Hepatitis C Treatment for HIV/HCV Co-Infected Patients",
+    "summary": "arXiv:2605.16593v2 Announce Type: replace-cross Abstract: Decision-makers frequently must choose a single action from a finite set of alternatives -- for example, physicians selecting a treatment, investors choosing a portfolio risk level, or judges determining sentences. To improve outcomes, policymakers often issue policy rules or guidelines to inform such choices. In this paper, I show how to generally derive policy rules from observational data in a multi-action framework under relatively weak assumptions about the underlying structure of the heterogeneous sampled population. Conditional average treatment effects (CATEs) are consistently estimated via a weighted K-means algorithm, assumi",
+    "labels_src": [
+      "responsible-ai-eval"
+    ],
+    "labels": [
+      "ml-research"
+    ],
+    "score": 1.0823379723587645,
+    "probabilities": {
+      "ml-research": 0.8325676710452034,
+      "llm-genai": 0.002415345380287521,
+      "mlops-deployment": 0.0016833952637167462,
+      "experimentation-causal": 0.3708157225164697,
+      "data-engineering": 0.005967768859600006,
+      "ds-tooling": 0.009002973553096937,
+      "analytics-viz": 0.3503831752343661,
+      "responsible-ai-eval": 0.006418781190131338
+    },
+    "latency_s": 10.546920449007303
+  },
+  {
+    "id": "ds-041",
+    "profile": "ds.v1",
+    "title": "MoEZip: Routing-Aware KV Cache Compression for Sparse Mixture-of-Experts LLMs",
+    "summary": "arXiv:2610.30206v1 Announce Type: new Abstract: Mixture-of-Experts (MoE) language models scale model capacity efficiently by activating a small subset of parameters per token. However, in long-context inference, memory remains a major bottleneck because the KV cache grows linearly with sequence length. Existing KV cache compression methods reduce this cost for dense transformers, but overlook a problem specific to MoE: KV eviction can change which experts are selected during answer generation, degrading the generation quality. We propose MoEZip, a routing-aware KV cache compression for sparse MoE language models. To estimate the sensitivity of expert routing to perturbation, we propose a nov",
+    "labels_src": [
+      "responsible-ai-eval",
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.2993397468602068,
+    "probabilities": {
+      "ml-research": 0.9994014276360759,
+      "llm-genai": 0.9994921129693898,
+      "mlops-deployment": 0.005433886523886491,
+      "experimentation-causal": 0.06320759170780293,
+      "data-engineering": 0.0013135455511628326,
+      "ds-tooling": 0.010887266671297703,
+      "analytics-viz": 0.00036517654093088536,
+      "responsible-ai-eval": 0.0009531266471582447
+    },
+    "latency_s": 10.247720533050597
+  },
+  {
+    "id": "ds-042",
+    "profile": "ds.v1",
+    "title": "Comcast loses more customers, claims other ISPs' cheap prices are \"irrational\"",
+    "summary": "Comcast reportedly plans significant job cuts in its cable division as the firm continues to lose residential broadband and TV customers. Comcast lost 144,000 residential broadband customers in Q3 2026, up from a 91,000-customer loss in the same quarter a year ago, the company said in its earnings report today. Comcast historically capitalized on a lack of competition for high-speed wired broadband. But now it faces stronger competition from fixed wireless providers and from fiber providers in parts of its cable territory. \"Fixed wireless remains aggressive and continues to take share, while fiber construction remains elevated, with pockets of irrational pricing and promotional activity,\" Co",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.005094962486826598,
+      "llm-genai": 0.0007615594900450455,
+      "mlops-deployment": 0.003520090017681806,
+      "experimentation-causal": 0.604108382851667,
+      "data-engineering": 0.0008525065274379563,
+      "ds-tooling": 0.0005524446962504718,
+      "analytics-viz": 0.5274619977122742,
+      "responsible-ai-eval": 0.0017844712221901868
+    },
+    "latency_s": 9.791056126006879
+  },
+  {
+    "id": "ds-043",
+    "profile": "ds.v1",
+    "title": "Leaked Mass Effect: Universe trailer gives a taste of what we're all missing",
+    "summary": "Those mourning yesterday's shuttering of highly praised and influential developer BioWare also had to deal with the cancellation of the next Mass Effect game, which was first teased back in 2020 . Today, we got our best look at what that game could have been with a short, leaked trailer for Mass Effect: Universe . In the roughly two-minute montage\u2014which describes itself as \"in-engine footage from our small team\" that \"uses our pre-production assets\"\u2014an ex-military officer wearing an N7 trenchcoat (similar to the one seen in that 2020 teaser) encounters an Asari at a bar. He talks of his frustration with military life\u2014\"by the time you put out one fire, another had already started\"\u2014before disc",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.004469869331743811,
+      "llm-genai": 0.0021051031408347,
+      "mlops-deployment": 0.0016842224640215401,
+      "experimentation-causal": 0.01076221762923589,
+      "data-engineering": 0.0005904109783551681,
+      "ds-tooling": 0.0009223884401260422,
+      "analytics-viz": 0.002528497843805902,
+      "responsible-ai-eval": 0.0007940911255080766
+    },
+    "latency_s": 10.595799861010164
+  },
+  {
+    "id": "ds-044",
+    "profile": "ds.v1",
+    "title": "Review: Crystal Lake suffers a bit from its obsession with Pam Voorhees",
+    "summary": "Peacock series Crystal Lake doesn\u2019t feel like a Friday the 13th movie when you first press play, even though it\u2019s set up to be a prequel to the original film. (This review includes spoilers of the original Friday the 13th movie but avoids major Crystal Lake spoilers.) Instead, Crystal Lake strives to build a drama that\u2019s half homage, half uncharted territory, while giving a long-awaited backstory to Pamela Voorhees. The original villain in the first film, Pam Voorhees, shocked audiences in 1980 by popping up out of nowhere in the midst of a brutal camp counselor killing spree, then confronting the final girl with a Norman Bates-like delivery of the movie\u2019s chilling tagline, \u201cKill her, mommy,",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.012520595827540826,
+      "llm-genai": 0.011132931725270075,
+      "mlops-deployment": 0.0187440268732909,
+      "experimentation-causal": 0.06107201226193974,
+      "data-engineering": 0.0014583117166209144,
+      "ds-tooling": 0.004361787772991319,
+      "analytics-viz": 0.004391100110923487,
+      "responsible-ai-eval": 0.003200966137516752
+    },
+    "latency_s": 10.516860957955942
+  },
+  {
+    "id": "ds-045",
+    "profile": "ds.v1",
+    "title": "Deploy RFD4-Proteina on Databricks",
+    "summary": "Bring RFD4-Proteina to your research data with AI-assisted development and serverless NVIDIA GPU compute....",
+    "labels_src": [
+      "ml-research",
+      "mlops-deployment"
+    ],
+    "labels": [
+      "mlops-deployment"
+    ],
+    "score": 1.0584688288409245,
+    "probabilities": {
+      "ml-research": 0.05889812488658983,
+      "llm-genai": 0.01076106022703596,
+      "mlops-deployment": 0.9622443898553859,
+      "experimentation-causal": 0.28289369684802484,
+      "data-engineering": 0.15755690876940923,
+      "ds-tooling": 0.23296184971463987,
+      "analytics-viz": 0.04038515090795478,
+      "responsible-ai-eval": 0.0007317432049000259
+    },
+    "latency_s": 8.938763621030375
+  },
+  {
+    "id": "ds-046",
+    "profile": "ds.v1",
+    "title": "MIT students gain a humanist lens on technical innovation in Tulsa, Oklahoma",
+    "summary": "When MIT mechanical engineering student Daphne Wang arrived for her internship at the Muscogee Creek Nation Department of Health in Tulsa, Oklahoma last summer, she expected to be writing code. To her surprise, she found herself analyzing tribal history and the implications for technical innovation. \u201cI learned so much that I think should be required curriculum for every single person in this country,\u201d says Wang. \u201cI think tech for good is genuinely getting out into communities and learning about people who aren't you, creating worldly perspectives that you ultimately can take into everything else that you do.\u201d Wang and fellow intern Lucy Sun, who is majoring in artificial intelligence and dec",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.0020239892506743375,
+      "llm-genai": 0.0008016072097670232,
+      "mlops-deployment": 0.0013309212987259933,
+      "experimentation-causal": 0.4323924470497165,
+      "data-engineering": 0.000706576932216543,
+      "ds-tooling": 0.0006557975738589343,
+      "analytics-viz": 0.016476557165826276,
+      "responsible-ai-eval": 0.0016049936835826092
+    },
+    "latency_s": 9.879235923988745
+  },
+  {
+    "id": "ds-047",
+    "profile": "ds.v1",
+    "title": "Giving AI a \u201ccrystal clear\u201d view of the materials world",
+    "summary": "In principle, artificial intelligence could make finding the right material for an application as simple as ordering dinner: Scientists would tell a large language model what they want, and it would serve them the perfect material for the job. Unfortunately, that approach doesn\u2019t work well yet, and the problem comes down to data: Most materials consist of 3D arrangements of crystals, not the text streams that today\u2019s large language models are trained on. The experimental literature is also heavily biased toward a few popular classes of crystals, making AI outputs skew toward those materials. Now MIT researchers have created a multimodal AI model that tackles these problems. The model combine",
+    "labels_src": [
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "llm-genai"
+    ],
+    "score": 1.2984693951898427,
+    "probabilities": {
+      "ml-research": 0.9988226116844944,
+      "llm-genai": 0.641249504010247,
+      "mlops-deployment": 0.009658396274625225,
+      "experimentation-causal": 0.07053095693084228,
+      "data-engineering": 0.006927652964253278,
+      "ds-tooling": 0.006161200031599738,
+      "analytics-viz": 0.011910352165132466,
+      "responsible-ai-eval": 0.016076898925601126
+    },
+    "latency_s": 9.979677899042144
+  },
+  {
+    "id": "ds-048",
+    "profile": "ds.v1",
+    "title": "5 Best GitHub Repositories for AI Agent Skills",
+    "summary": "Explore five popular AI agent skill collections that help coding agents plan, test, debug, review, and build better software.",
+    "labels_src": [
+      "llm-genai"
+    ],
+    "labels": [
+      "llm-genai"
+    ],
+    "score": 1.2808675132627934,
+    "probabilities": {
+      "ml-research": 0.010875154898239548,
+      "llm-genai": 0.985282702509841,
+      "mlops-deployment": 0.011268251402082085,
+      "experimentation-causal": 0.010086838913966443,
+      "data-engineering": 0.0037542543159742167,
+      "ds-tooling": 0.024117170487847422,
+      "analytics-viz": 0.004988703654203986,
+      "responsible-ai-eval": 0.004685138939145248
+    },
+    "latency_s": 8.752810720005073
+  },
+  {
+    "id": "ds-049",
+    "profile": "ds.v1",
+    "title": "5 Docker Containers for Devs",
+    "summary": "Five self-hosted Docker containers replace the public utility sites where developer data quietly leaks. Learn which ones handle JWT decoding, data transformation, file conversion, API testing, and diagram rendering locally.",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "ml-research": 0.0018662971137640653,
+      "llm-genai": 0.0004320042360991967,
+      "mlops-deployment": 0.005350102788189562,
+      "experimentation-causal": 0.0058226861323269815,
+      "data-engineering": 0.02275177545261067,
+      "ds-tooling": 0.030090148790581278,
+      "analytics-viz": 0.006219871671519603,
+      "responsible-ai-eval": 0.004301736080753286
+    },
+    "latency_s": 8.80767273902893
+  },
+  {
+    "id": "ds-050",
+    "profile": "ds.v1",
+    "title": "An Agent Architecture with Tools and Memory for Selective Correction of Wrist PPG Heart Rate Estimates",
+    "summary": "arXiv:2610.30688v1 Announce Type: new Abstract: Wrist photoplethysmography (PPG) heart rate estimates are vulnerable to motion artifacts, and corrections that reduce mean error can worsen individual windows. We propose an agent architecture with tools and memory around a fixed heart rate estimator. Pulse, motion, and limited historical evidence generate candidate estimates, whose predicted benefits and harms guide selection. An independent risk gate determines whether to retain, correct, or reject each output. We trained the architecture on PPG-DaLiA and tested it on Wrist Exercise, GalaxyPPG, and WildPPG with frozen weights. Across these four public datasets, mean absolute error (MAE), macr",
+    "labels_src": [
+      "llm-genai",
+      "ml-research"
+    ],
+    "labels": [
+      "ml-research",
+      "experimentation-causal"
+    ],
+    "score": 1.2962915733238092,
+    "probabilities": {
+      "ml-research": 0.9971473640952377,
+      "llm-genai": 0.047142157254756734,
+      "mlops-deployment": 0.018279982813456042,
+      "experimentation-causal": 0.8834906749441432,
+      "data-engineering": 0.009726078090485299,
+      "ds-tooling": 0.034090877835971325,
+      "analytics-viz": 0.01637099773414358,
+      "responsible-ai-eval": 0.09620627388435057
+    },
+    "latency_s": 9.954694008920342
+  },
+  {
+    "id": "fun-001",
+    "profile": "fun.v1",
+    "title": "hot dogs with vinegared iceberg and potato chips",
+    "summary": "In something I never expected to have to clarify, this is a hot dog recipe but it is not a recipe for hot dogs. I know that I have a history of making foods from scratch that most sane people do not feel the need to \u2014 cream cheese , fig newtons , bagels , vanilla extract , and [coming soon] almond extract too \u2014 but I do still leave \u201c grinding meat with spices, salt, and curing agents into a smooth, fine emulsion\u201d before being \u201cstuffed into casings and smoked\u201d to the experts, usually at Hebrew National. Read more \u00bb",
+    "labels_src": [
+      "cooking-bbq"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.021163998120773783,
+      "cycling-outdoors": 0.0030967116473814018,
+      "games-tabletop": 0.008024874327175996
+    },
+    "latency_s": 3.964368946966715
+  },
+  {
+    "id": "fun-002",
+    "profile": "fun.v1",
+    "title": "strawberry chiffon shortcake, perfected",
+    "summary": "In 2007, when this website was still in its infancy, I shared a recipe for a layered strawberry chiffon shortcake . I\u2019d never made a chiffon cake before, but I brought it to a friend\u2019s rooftop birthday BBQ, correctly assuming that no one would be unhappy with a towering, featherweight cake sandwiched with whipped cream and fresh strawberries, however inexpertly made. Read more \u00bb",
+    "labels_src": [
+      "cooking-bbq"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.030608439748128057,
+      "cycling-outdoors": 0.008613259218969325,
+      "games-tabletop": 0.007566377062503203
+    },
+    "latency_s": 3.7279360900865868
+  },
+  {
+    "id": "fun-003",
+    "profile": "fun.v1",
+    "title": "spaghetti aglio e olio",
+    "summary": "Do you ever look around at the ingredients available to you, the energy you have to give to the cooking process \u2014 or, as I recently explained to a medium-sized child shortly before I got uninvited from future family events, the amount of fudge you have left to give from your, uh, bucket of fudge \u2014 and decided to boil spaghetti, toss it with garlicky olive oil, and call it dinner? Read more \u00bb",
+    "labels_src": [
+      "cooking-bbq"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.010416765125645072,
+      "cycling-outdoors": 0.00231365959171646,
+      "games-tabletop": 0.007746559133760187
+    },
+    "latency_s": 4.188707586028613
+  },
+  {
+    "id": "fun-004",
+    "profile": "fun.v1",
+    "title": "simple chicken tacos",
+    "summary": "Twenty years ago, I started this website because I wanted a place to share recipes I was excited about, as it\u2019s practically coded into my DNA to be an unfettered yap about the things I love. [ This is me. ] The larger context was that upon reaching so-called adulthood, I\u2019d found that while I knew how to cook, there were still so many things I hadn\u2019t figured out, such as: how to turn a can of tomatoes into not just an okay pasta sauce, but a spectacular one ; how to make really good meatballs ; perfect hummus ; and a crumb cake I\u2019d want to make forever. Read more \u00bb",
+    "labels_src": [
+      "cooking-bbq"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.011637133501529302,
+      "cycling-outdoors": 0.0006349179734832865,
+      "games-tabletop": 0.004400808550813386
+    },
+    "latency_s": 5.148089636000805
+  },
+  {
+    "id": "fun-005",
+    "profile": "fun.v1",
+    "title": "Easy Homemade Cranberry Sauce",
+    "summary": "A streamlined sauce that\u2019s tart, sweet, and just a little citrusy\u2014and takes only 10 minutes on the stove.",
+    "labels_src": [
+      "cooking-bbq"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.000997700204797647,
+      "cycling-outdoors": 0.0017086651207663638,
+      "games-tabletop": 0.004024308704787764
+    },
+    "latency_s": 3.3563872990198433
+  },
+  {
+    "id": "fun-006",
+    "profile": "fun.v1",
+    "title": "How Long to Cook a Turkey by Weight",
+    "summary": "Whether you\u2019re roasting your turkey whole or in parts, here\u2019s how to get the timing just right.",
+    "labels_src": [
+      "cooking-bbq"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.003961931446145206,
+      "cycling-outdoors": 0.0023641100364255193,
+      "games-tabletop": 0.0017435180739703755
+    },
+    "latency_s": 3.3006005929782987
+  },
+  {
+    "id": "fun-007",
+    "profile": "fun.v1",
+    "title": "\u201cAt the Dinner Table at Night,\u201d a Poem by Allen Guy Wilcox",
+    "summary": "You\u2019ve gone to bed with the baby again, as I step gingerly through the house, searching for quiet projects I can take to completion and leave for you like origami. Each room for you to wake in as you wander, brewing a gift like morning coffee, the raw ends of your several lists now seared and cooling. It\u2019s much nicer when we can sit here as a family a few moments longer, while our girl begins to improvise tomorrow aloud, ticking off her list of necessaries, countermanding the plot with reasonable justifications which she has collected from the pond like pretty rocks. To sit here, with large glasses of water in front of us, and a bowl of dressed cabbage now resting. To age and grow together t",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.05687454060142409,
+      "cycling-outdoors": 0.0014679422063076846,
+      "games-tabletop": 0.005980466030976055
+    },
+    "latency_s": 4.2183157580439
+  },
+  {
+    "id": "fun-008",
+    "profile": "fun.v1",
+    "title": "What It Was Like to See Nina Simone at the Village Gate, c. 1961",
+    "summary": "An announcement interrupted the hum and buzz of audience conversation: \u201cAt this time, ladies and gentlemen, the Village Gate takes the greatest pleasure in presenting the amazing Miss Nina Simone.\u201d Fresh on the heels of cutting short a run at the Round Table in New York City because of noisy audiences, Simone stepped out onto the raised stage and her presence set the tone. She was taking control in her personal and professional life. The whistles and applause on the recording of the concert bleed into a song to a love, \u201cJust in Time.\u201d She sang, \u201cJust in time you found me just in time. / Before you came my time was running low.\u201d She was expressing gratitude to a romantic partner who had rescu",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.4850908621172748,
+      "cycling-outdoors": 0.0010056955947968784,
+      "games-tabletop": 0.005143074447401318
+    },
+    "latency_s": 4.267221134039573
+  },
+  {
+    "id": "fun-009",
+    "profile": "fun.v1",
+    "title": "How a Love of Salem and The House of Seven Gables Inspired My Debut Novel",
+    "summary": "Situated directly on the waterfront of Salem Harbor in Massachusetts, there sits a two-story timber home. The wood is dark, evocative of the traditional First Period architecture of the early colonies. And most notably, it has many gables, triangular sections of an exterior wall, where roof lines meet. The effect is imposing. Eerie. It\u2019s easy to imagine the home standing in those difficult early years in American history, witnessing both hardship and hope. Indeed, this is no ordinary house. First built in 1668 for the sea captain John Turner, The House of the Seven Gables was later inhabited by American author Nathaniel Hawthorne. Hawthorne, whose great, great grandfather was a ruthless judg",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [
+      "books-film-music"
+    ],
+    "score": 1.1335773290309064,
+    "probabilities": {
+      "books-film-music": 0.944647774192422,
+      "cycling-outdoors": 0.0034602090870797892,
+      "games-tabletop": 0.02549157385418215
+    },
+    "latency_s": 4.171725602005608
+  },
+  {
+    "id": "fun-010",
+    "profile": "fun.v1",
+    "title": "Why the Broiler Chicken Is the True Symbol of the Anthropocene",
+    "summary": "The broiler chicken is the quintessence of the modern meat complex. In 1925 the average chicken brought to slaughter was 112 days old, ate 4.7 pounds of feed for every pound of liveweight chicken, and weighed 2.5 pounds when its neck was wrung. Today, an industrially raised chicken lives to 47 days, takes only 1.69 pounds of feed for every pound of chicken, and reaches 6.57 pounds. The bird is an unsteady scaffold for its ponderous breast. When they are finished growing, chickens are shoveled (or scooped by a harvester that has been compared to a Zamboni) into boxes and shipped to a processing facility, where Benjamin Ward Richardson\u2019s vision of electronarcosis is carried to its mechanized e",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.03728674490646879,
+      "cycling-outdoors": 0.001416148459062301,
+      "games-tabletop": 0.009797282148550007
+    },
+    "latency_s": 4.646360752987675
+  },
+  {
+    "id": "fun-011",
+    "profile": "fun.v1",
+    "title": "\u2018Wicker\u2019 Review: Olivia Colman Rides Alexander Skarsg\u00e5rd\u2019s Wood in Bawdy Sex Fantasy About Hysterically Horny Villagers",
+    "summary": "Eleanor Wilson and Alex Huston Fischer's second feature is a kooky sex-crazed folk tale in search of a greater purpose beyond its premise, but Colman and Skarsg\u00e5rd prove irresistibly weird and wonderful.",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [
+      "books-film-music"
+    ],
+    "score": 1.1658840947432105,
+    "probabilities": {
+      "books-film-music": 0.9715700789526756,
+      "cycling-outdoors": 0.0010583783945628585,
+      "games-tabletop": 0.033023369615039336
+    },
+    "latency_s": 3.542761180899106
+  },
+  {
+    "id": "fun-012",
+    "profile": "fun.v1",
+    "title": "\u2018The Only Living Pickpocket in New York\u2019 Review: An Old School Thief Holds on in the Age of Apple Pay",
+    "summary": "Produced under Rian Johnson\u2019s T-Street banner, writer/director Noah Segan's New York picture breathes new life into the subgenre.",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.4417087524364741,
+      "cycling-outdoors": 0.0008431274174452645,
+      "games-tabletop": 0.06762325589216618
+    },
+    "latency_s": 3.427532745990902
+  },
+  {
+    "id": "fun-013",
+    "profile": "fun.v1",
+    "title": "\u2018Moonlight\u2019 Turns 10: Tarell Alvin McCraney on the Film\u2019s Lasting Legacy and That Best Picture Mix-Up",
+    "summary": "The Oscar-winning screenwriter reflects on the beginnings of Barry Jenkins' \"Moonlight\" \u2014 and how it led to multiple Academy Awards, including Best Picture.",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [
+      "books-film-music"
+    ],
+    "score": 1.1131671581237936,
+    "probabilities": {
+      "books-film-music": 0.9276392984364947,
+      "cycling-outdoors": 0.00026793382403117883,
+      "games-tabletop": 0.0002402281734414261
+    },
+    "latency_s": 3.458097715047188
+  },
+  {
+    "id": "fun-014",
+    "profile": "fun.v1",
+    "title": "Chvrches Announce First Album in Six Years and 2027 Tour",
+    "summary": "The trio will perform material from All The King\u2019s Men on the road come spring",
+    "labels_src": [
+      "books-film-music"
+    ],
+    "labels": [
+      "books-film-music"
+    ],
+    "score": 1.1954463287249872,
+    "probabilities": {
+      "books-film-music": 0.9962052739374894,
+      "cycling-outdoors": 0.008309787796322035,
+      "games-tabletop": 0.03372511519110863
+    },
+    "latency_s": 3.4010030300123617
+  },
+  {
+    "id": "fun-015",
+    "profile": "fun.v1",
+    "title": "Surprise Visitors With a Trick & Treat Scare Box",
+    "summary": "This Halloween, build a spring snake scare box and your trick-or-treaters with a spring-loaded surprise! The post Surprise Visitors With a Trick & Treat Scare Box appeared first on Make: DIY Projects and Ideas for Makers .",
+    "labels_src": [
+      "diy-woodworking"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0069902215786703725,
+      "cycling-outdoors": 0.002620368982487694,
+      "games-tabletop": 0.008841536439385273
+    },
+    "latency_s": 4.1589108450571075
+  },
+  {
+    "id": "fun-016",
+    "profile": "fun.v1",
+    "title": "BedazzLED Jean Jacket",
+    "summary": "Make some 21st-century flower power \u2014 with powered flowers, with this LED jean jacket. The post BedazzLED Jean Jacket appeared first on Make: DIY Projects and Ideas for Makers .",
+    "labels_src": [
+      "diy-woodworking"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.012087806465917799,
+      "cycling-outdoors": 0.0783403882784775,
+      "games-tabletop": 0.008971105286154905
+    },
+    "latency_s": 4.122004650067538
+  },
+  {
+    "id": "fun-017",
+    "profile": "fun.v1",
+    "title": "Open Source Hardware Certifications for September 2026",
+    "summary": "The Open Source Hardware Association added certifications for an educational physics device, a 3D printer air mover, a USB protection device, and more. The post Open Source Hardware Certifications for September 2026 appeared first on Make: DIY Projects and Ideas for Makers .",
+    "labels_src": [
+      "diy-woodworking"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0017347958394677472,
+      "cycling-outdoors": 0.0011032136939206096,
+      "games-tabletop": 0.0015575724443715234
+    },
+    "latency_s": 3.6814819200662896
+  },
+  {
+    "id": "fun-018",
+    "profile": "fun.v1",
+    "title": "Improving a Brain-Computer Interface",
+    "summary": "Young engineer Aarav Sharma is still at work developing better brain-computer interfaces. The post Improving a Brain-Computer Interface appeared first on Make: DIY Projects and Ideas for Makers .",
+    "labels_src": [
+      "diy-woodworking"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.004864184878161896,
+      "cycling-outdoors": 0.00019183420728533055,
+      "games-tabletop": 0.0014757771808847873
+    },
+    "latency_s": 3.7158759919693694
+  },
+  {
+    "id": "fun-019",
+    "profile": "fun.v1",
+    "title": "32-inch Gravel Gains Steam with New Tires from Continental and Rene Herse",
+    "summary": "The tire offerings from both big and small brands build on the rumors that 32-inch wheel gravel bikes from big brands will be rolling out early next year. Read the full article at 32-inch Gravel Gains Steam with New Tires from Continental and Rene Herse on Velo .",
+    "labels_src": [
+      "cycling-outdoors"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.0966968562300425,
+    "probabilities": {
+      "books-film-music": 0.060983372088715355,
+      "cycling-outdoors": 0.9969971420273113,
+      "games-tabletop": 0.010575676486500343
+    },
+    "latency_s": 4.101312267943285
+  },
+  {
+    "id": "fun-020",
+    "profile": "fun.v1",
+    "title": "Why Does an Event Like BorderLands Gravel Matter?",
+    "summary": "A gravel race along the Arizona-Mexico border is introducing riders to Douglas, where history, hospitality, and the Geronimo Trail meet. Read the full article at Why Does an Event Like BorderLands Gravel Matter? on Velo .",
+    "labels_src": [
+      "cycling-outdoors"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.0926144639260629,
+    "probabilities": {
+      "books-film-music": 0.07756185901209971,
+      "cycling-outdoors": 0.9932858762964206,
+      "games-tabletop": 0.11100043839690212
+    },
+    "latency_s": 4.57251815404743
+  },
+  {
+    "id": "fun-021",
+    "profile": "fun.v1",
+    "title": "Tour de France 2027 Route Reveal: Brutal Mountains, Big Time Trials, and a Wide-Open Fight for Yellow",
+    "summary": "Tour de France 2027 packs 71km of time trials, three summit finishes, and a brutal Pyr\u00e9n\u00e9es showdown in deceptively challenging course. Read the full article at Tour de France 2027 Route Reveal: Brutal Mountains, Big Time Trials, and a Wide-Open Fight for Yellow on Velo .",
+    "labels_src": [
+      "cycling-outdoors"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.0971482847839966,
+    "probabilities": {
+      "books-film-music": 0.00858876560838742,
+      "cycling-outdoors": 0.9974075316218151,
+      "games-tabletop": 0.00813304396036007
+    },
+    "latency_s": 4.585000484948978
+  },
+  {
+    "id": "fun-022",
+    "profile": "fun.v1",
+    "title": "I Tried Bikepacking with a 17-Foot Canoe and a Velduro Phantom",
+    "summary": "I went bikepacking and canoepacking all in one with the Velduro Phantom e-gravel bike. Not everything went to plan. Read the full article at I Tried Bikepacking with a 17-Foot Canoe and a Velduro Phantom on Velo .",
+    "labels_src": [
+      "cycling-outdoors"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.099481117955502,
+    "probabilities": {
+      "books-film-music": 0.04399152889051933,
+      "cycling-outdoors": 0.9995282890504563,
+      "games-tabletop": 0.004600942466365424
+    },
+    "latency_s": 3.728277227957733
+  },
+  {
+    "id": "fun-023",
+    "profile": "fun.v1",
+    "title": "Complete List of Bike Basket Bags + All Things Basketpacking",
+    "summary": "Originally published July 2020; last updated October 2026 Attaching a basket to your bike to haul stuff is hardly new, but basketpacking is a touring style that\u2019s returned to popularity [\u2026] The post Complete List of Bike Basket Bags + All Things Basketpacking appeared first on BIKEPACKING.com .",
+    "labels_src": [
+      "cycling-outdoors"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.0997308978441849,
+    "probabilities": {
+      "books-film-music": 0.0034558972621739326,
+      "cycling-outdoors": 0.9997553616765316,
+      "games-tabletop": 0.0009823279743022594
+    },
+    "latency_s": 3.680830636061728
+  },
+  {
+    "id": "fun-024",
+    "profile": "fun.v1",
+    "title": "New KNIPEX TwinGrip XS Might be a Good Addition to the Tool Roll",
+    "summary": "Weighing just 58 grams, the new KNIPEX TwinGrip XS could be a great tool for tackling stubborn bolts and unexpected trailside repairs. Find out why it caught our attention as a potential addition to the bikepacking tool roll here\u2026 The post New KNIPEX TwinGrip XS Might be a Good Addition to the Tool Roll appeared first on BIKEPACKING.com .",
+    "labels_src": [
+      "cycling-outdoors",
+      "gadgets-gear"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.0993342821614027,
+    "probabilities": {
+      "books-film-music": 0.04087322351971134,
+      "cycling-outdoors": 0.9993948019649115,
+      "games-tabletop": 0.03209335906678202
+    },
+    "latency_s": 3.7916915440000594
+  },
+  {
+    "id": "fun-025",
+    "profile": "fun.v1",
+    "title": "The Best Climbing in Chattanooga, Tennessee",
+    "summary": "Climbing opportunities have blossomed in Chattanooga, and you can thank the Southeastern Climbers Coalition (SCC) for helping. The SCC focuses on the area\u2019s sandstone cliffs, working hard to preserve climbing areas\u2014and access\u2014not just in Chattanooga, but the entire Southeast. Here\u2019s a sample of what Chattanooga has to offer climbers\u2014but there\u2019s even more to discover in this interactive guide . Tennessee Wall Explore a wide variety of traditional routes Tennessee Wall is one of the premier traditional climbing crags in the country, with hundreds of single-pitch routes traversing bulletproof sandstone. The south-facing nature of the cliff makes it an ideal winter destination, but show up early",
+    "labels_src": [
+      "cycling-outdoors",
+      "travel-day-trips"
+    ],
+    "labels": [
+      "cycling-outdoors"
+    ],
+    "score": 1.09637337318231,
+    "probabilities": {
+      "books-film-music": 0.0030863656513251156,
+      "cycling-outdoors": 0.9967030665293726,
+      "games-tabletop": 0.007810935325922459
+    },
+    "latency_s": 4.157679104944691
+  },
+  {
+    "id": "fun-026",
+    "profile": "fun.v1",
+    "title": "City of Six Moons is a board game written in an alien language you\u2019ll need to translate to play - and you\u2019ll never know if you\u2019ve got it quite right",
+    "summary": "Upcoming board game City of Six Moons is taking difficulty-to-decipher rulebooks to a whole new level by writing all of its rules in an alien language that you\u2019ll have to translate in order to play. The kicker? You\u2019ll never know if you\u2019ve done so correctly. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.9997885042006184,
+    "probabilities": {
+      "books-film-music": 0.005109214102456319,
+      "cycling-outdoors": 0.0004031180488396072,
+      "games-tabletop": 0.9997885042006184
+    },
+    "latency_s": 5.184932295000181
+  },
+  {
+    "id": "fun-027",
+    "profile": "fun.v1",
+    "title": "Play a 30 minute co-op Dark Souls-like D&D card game with Regicide Legacy, now on Kickstarter!",
+    "summary": "A new cooperative card game pits a group of players against a series of increasingly difficult enemies in a Dark Souls-like test of survival. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.9955259528803408,
+    "probabilities": {
+      "books-film-music": 0.0017871913176072795,
+      "cycling-outdoors": 0.0007255811355971149,
+      "games-tabletop": 0.9955259528803408
+    },
+    "latency_s": 4.9770149069372565
+  },
+  {
+    "id": "fun-028",
+    "profile": "fun.v1",
+    "title": "Spend another five hours moving three spaces in the new Talisman board game from the studio behind Betrayal at House on the Hill",
+    "summary": "A new edition of Talisman, the classic adventure board game, is coming from the publisher behind Betrayal at House on the Hill. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.9998461834896349,
+    "probabilities": {
+      "books-film-music": 0.18060516713027022,
+      "cycling-outdoors": 0.0025040157714091415,
+      "games-tabletop": 0.9998461834896349
+    },
+    "latency_s": 4.24705812393222
+  },
+  {
+    "id": "fun-029",
+    "profile": "fun.v1",
+    "title": "Magic: The Gathering bans Unfinity\u2019s Stickers and Attractions from three formats, gives up on partial legality.",
+    "summary": "Magic: The Gathering cards that use the sticker or Attraction mechanic from the 2022 Unfinity set have been banned in the Legacy, Vintage and Pauper formats. Publisher Wizards of the Coast outlined their reasoning in the most recent Banned and Restricted List update , citing a failed experiment on the part of partially legal sets. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.97634015501172,
+    "probabilities": {
+      "books-film-music": 0.0035958297253980897,
+      "cycling-outdoors": 0.005246568105789403,
+      "games-tabletop": 0.97634015501172
+    },
+    "latency_s": 4.825141031993553
+  },
+  {
+    "id": "fun-030",
+    "profile": "fun.v1",
+    "title": "After Kids on Bikes and Kids on Brooms, the beginner-friendly RPG series puts Kids in Capes",
+    "summary": "Nearly three years after it was first announced, Kids in Capes will launch a crowdfunding campaign aiming to publish a superhero-themed version of their popular investigative tabletop RPG. Coming later this year, it will trade bikes, flashlights, wands and pointy hats for a whole new genre of storytelling from the perspective of unassuming kids. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.9937500041892061,
+    "probabilities": {
+      "books-film-music": 0.46087649658481356,
+      "cycling-outdoors": 0.021504684406011932,
+      "games-tabletop": 0.9937500041892061
+    },
+    "latency_s": 4.604651900008321
+  },
+  {
+    "id": "fun-031",
+    "profile": "fun.v1",
+    "title": "Promising virtual tabletop One More Multiverse, home to digital Blades in the Dark and Yazeba's B&B, is shutting down",
+    "summary": "One More Multiverse, the ambitious virtual tabletop app for playing RPGs online using fetching pixel-art sprites and a flexible, user-friendly interface akin to a video game, is closing down. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.9655774015377604,
+    "probabilities": {
+      "books-film-music": 0.005633386708207854,
+      "cycling-outdoors": 0.0007081813659792868,
+      "games-tabletop": 0.9655774015377604
+    },
+    "latency_s": 4.216994720045477
+  },
+  {
+    "id": "fun-032",
+    "profile": "fun.v1",
+    "title": "Ashes is basically an indie Dark Souls tabletop RPG for a single Chosen Undead",
+    "summary": "Dark Souls-meets-tabletop is an already rich vein of experiences, from the official board game and troubled RPG adaptation to its inspiration on a plethora of indie creations. Well, chalk one more intriguing experiment on the board because Ashes is approaching the acclaimed video game series as a solo RPG as a dungeon delve. Read more",
+    "labels_src": [
+      "games-tabletop"
+    ],
+    "labels": [
+      "games-tabletop"
+    ],
+    "score": 0.9982288583269953,
+    "probabilities": {
+      "books-film-music": 0.004286990637303038,
+      "cycling-outdoors": 0.0008418124885096454,
+      "games-tabletop": 0.9982288583269953
+    },
+    "latency_s": 4.303279839106835
+  },
+  {
+    "id": "fun-033",
+    "profile": "fun.v1",
+    "title": "Ruins of the Ferenc J\u00f3zsef Bridge in Budapest, Hungary",
+    "summary": "Walking through Budapest, it is impossible to ignore the stunning bridges. One in particular garners the attention of tourists, the Szabads\u00e1g h\u00edd , or Liberty Bridge. It is ornate, green, and connects two very important parts of the city \u2014 Gellert Hill and the Central Market. It is also the only central bridge with old-timey trams regularly running across it, making it an iconic photo spot. But if you are lucky enough to find the Danube River level low enough, you can peer over the edge and see the ruins of its former self beneath the river. The Ferenc J\u00f3zsef Bridge was destroyed during the bombings of the Battle of Budapest in January 1945. On most days, that is a history that is easily for",
+    "labels_src": [
+      "travel-day-trips"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.004132656959714277,
+      "cycling-outdoors": 0.00652051290134231,
+      "games-tabletop": 0.004436931960525423
+    },
+    "latency_s": 5.327753808000125
+  },
+  {
+    "id": "fun-034",
+    "profile": "fun.v1",
+    "title": "Giant Perstorp Vinegar Bottle in Perstorp, Sweden",
+    "summary": "Perstorp's vinegar is a staple of Swedish kitchens, and most Swedes recognize its glass bottle . In 1881, the factory in Perstorp began producing acetic acid using raw materials from the area's beech forests. In this small town in southern Sweden, a nearly 16-foot (5-meter) concrete bottle copies the classic glass one, right down to the red cap and the label. It stands beside a main road leading into the town center as a local symbol of Perstorp's vinegar-making past. The bottle was unveiled in 1994 with music and a speech by well-known television chef Jan Boris-M\u00f6ller, who used the occasion to explain how vinegar can soften an eggshell enough to squeeze an egg into a bottle. Laminated panel",
+    "labels_src": [
+      "travel-day-trips"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.015731785590027726,
+      "cycling-outdoors": 0.00040771011055167544,
+      "games-tabletop": 0.0012640414360694094
+    },
+    "latency_s": 5.156445062020794
+  },
+  {
+    "id": "fun-035",
+    "profile": "fun.v1",
+    "title": "Nectar Soda",
+    "summary": "Though Cincinnati is best known for breweries, another effervescent beverage has a long history in the Queen City: the nectar soda. Home to the oldest pharmacy college in the U.S. west of the Alleghenies, the Eclectic Medical Institute (1845-1952), and Lloyd Brothers Pharmacists , Cincinnati was long on the forefront of the pharmaceutical industry. The city had a number of apothecaries with soda fountains, as well as confectioners serving countless carbonated concoctions\u2014some claiming to cure a variety of ailments, and others simply providing customers with something sweet and refreshing to drink. Enter the nectar soda. The flavor is a combination of vanilla and bitter almond, and the drink",
+    "labels_src": [
+      "travel-day-trips"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.00404242933283725,
+      "cycling-outdoors": 0.0005527702069177653,
+      "games-tabletop": 0.00932588107208647
+    },
+    "latency_s": 5.079327070969157
+  },
+  {
+    "id": "fun-036",
+    "profile": "fun.v1",
+    "title": "Hunebed D27 in Borger, Netherlands",
+    "summary": "Just a short walk from the Hunebedcentrum in Borger stands D27, the largest dolmen in the Netherlands. At over 22 meters (74 feet) long and more than 5,000 years old, this megalithic monument was already ancient when Stonehenge was still centuries away. Massive boulders form the tomb, including the heaviest capstone ever used in a Dutch dolmen, estimated to weigh around 20 tons. The monument has fascinated visitors for centuries. In fact, the first documented archaeological excavation of a Dutch dolmen took place here in 1685. Yet D27 still guards its secrets. Much of the site remains undisturbed, and its sealed burial chamber continues to fuel questions about what may still lie hidden benea",
+    "labels_src": [
+      "travel-day-trips"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.003260494866789504,
+      "cycling-outdoors": 0.003919899392971356,
+      "games-tabletop": 0.003122383789286627
+    },
+    "latency_s": 5.540630028001033
+  },
+  {
+    "id": "fun-037",
+    "profile": "fun.v1",
+    "title": "TWA Flight 529 Memorial in Willowbrook, Illinois",
+    "summary": "On September 1st, 1961, at 2:00 am, TWA Flight 529 took off from Chicago\u2019s Midway Airport for the last leg of its cross-country journey. Originating in Boston, Flight 529 had already stopped in New York, Pittsburgh, and Chicago, with its next scheduled stop being Las Vegas before continuing to Los Angeles. Shortly after takeoff, the plane (a Lockheed Constellation L-049 prop liner) pitched up and stalled out. Unable to be brought back under control, the plane crashed at 2:05 am in a cornfield in what is now Willowbrook, Illinois. Though first responders were on the scene within minutes, they found no survivors. All 73 passengers and 5 crew members on board were killed, including entire famil",
+    "labels_src": [
+      "travel-day-trips"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.004346556726243096,
+      "cycling-outdoors": 0.0015279025091156301,
+      "games-tabletop": 0.0005856783671370467
+    },
+    "latency_s": 5.170905879000202
+  },
+  {
+    "id": "fun-038",
+    "profile": "fun.v1",
+    "title": "The first broken iPhone Duos are here",
+    "summary": "The iPhone Duo is officially going on sale today, but a few units already have broken screens. Based on posts about the affected units on Reddit, the issue appears to be happening at a similar spot on all of them: some kind of problem shows up on the inner screen along the hinge and a strange bright line (or lines) across the right side of the display. Here's how one user in Australia described what happened to their phone: Had my iPhone Duo for about six hours and had probably opened it fewer than 20 times. I was showing it to a friend, and as I opened it, I felt something around the internal hinge, underneath the screen. As I cont \u2026 Read the full story at The Verge.",
+    "labels_src": [
+      "gadgets-gear"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.02789361733668236,
+      "cycling-outdoors": 0.001166339587430221,
+      "games-tabletop": 0.140517440958915
+    },
+    "latency_s": 5.394607104011811
+  },
+  {
+    "id": "fun-039",
+    "profile": "fun.v1",
+    "title": "People are vibe coding their way to better TVs",
+    "summary": "Just imagine\u2026 a nice, clean homescreen with no ads, thanks to Claude. | Image: cleanyourtv Vibe coding has reached TVs. Social media is awash with posts from people using LLMs and open-source tools to remove ads and tracking, trim bloat so the OS runs faster, and even completely change the look and organization of their homescreens. While a lot of it is fun - one user turned their TV homescreen into a Pok\u00e9mon town - I think there's a level of frustration behind it, too. And TV companies should take notice. Vibe coded my parents' TV this afternoon! It was showing a sponsored ad before you could even get to Netflix. Gave Claude Code the model number, it found the TV on wifi, removed 25 Xiaomi",
+    "labels_src": [
+      "gadgets-gear"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.06950139820590186,
+      "cycling-outdoors": 0.0003530474458846648,
+      "games-tabletop": 0.004813275726974985
+    },
+    "latency_s": 5.080663722008467
+  },
+  {
+    "id": "fun-040",
+    "profile": "fun.v1",
+    "title": "Brick\u2019s new app blocker is designed for bedtime doomscrolling",
+    "summary": "The Brick Night is considerably bigger then the OG Brick, and more than double the price. | Image: Brick Brick, the company behind the $59 gadget that blocks you from using apps on your phone, has launched a new device that's designed to help you cut back on doomscrolling in bed. The $129 Brick Night introduces a location-based element: instead of requiring you to tap your phone against the device, like the OG Brick , this version uses Bluetooth to automatically kick in when you enter your bedroom (or any other room you put it in). The Brick Night uses two CR2477 batteries, and you can set a location zone of up to 25 feet x 25 feet. Both this and the Brick allow you to select specific apps t",
+    "labels_src": [
+      "gadgets-gear"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.02146847246684096,
+      "cycling-outdoors": 0.0009943618261688582,
+      "games-tabletop": 0.03527981892773421
+    },
+    "latency_s": 5.158509309054352
+  },
+  {
+    "id": "fun-041",
+    "profile": "fun.v1",
+    "title": "Coros Dura 2 Solar Review: The Infinite-Battery Garmin Alternative (And the Detail Everyone Will Miss)",
+    "summary": "The 120-hour battery life and ultra-thin design steal the spotlight. But the real reason to consider this head unit has nothing to do with how long it lasts. Read the full article at Coros Dura 2 Solar Review: The Infinite-Battery Garmin Alternative (And the Detail Everyone Will Miss) on Velo .",
+    "labels_src": [
+      "gadgets-gear",
+      "cycling-outdoors"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.10239372750757046,
+      "cycling-outdoors": 0.6164173290262669,
+      "games-tabletop": 0.0651073430082692
+    },
+    "latency_s": 5.014878381974995
+  },
+  {
+    "id": "fun-042",
+    "profile": "fun.v1",
+    "title": "Scientists who discovered a third form of magnetism win major physics prize",
+    "summary": "Physicists have uncovered a hidden third form of magnetism that challenges more than 100 years of established physics. Called altermagnetism, the discovery could transform future computing and electronics while opening an entirely new frontier in quantum research.",
+    "labels_src": [
+      "science-space"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0018339246828716089,
+      "cycling-outdoors": 0.00017072213882841117,
+      "games-tabletop": 0.0009990261254822807
+    },
+    "latency_s": 4.136214610072784
+  },
+  {
+    "id": "fun-043",
+    "profile": "fun.v1",
+    "title": "Alaska\u2019s monster tsunami sent water 1,580 feet up a mountain",
+    "summary": "A massive landslide in Alaska triggered the second-highest tsunami ever recorded, sending water and debris 1,580 feet up a mountainside just hours after tourists visited the area. Scientists discovered that the disaster was preceded by several warning signs, including rapid glacier retreat, heavy rainfall, and thousands of tiny seismic tremors. As glaciers retreat, similar disasters could become a growing danger in mountainous coastal regions.",
+    "labels_src": [
+      "science-space"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0022584306446235703,
+      "cycling-outdoors": 0.005182789951275395,
+      "games-tabletop": 0.00270796583456047
+    },
+    "latency_s": 4.323380777030252
+  },
+  {
+    "id": "fun-044",
+    "profile": "fun.v1",
+    "title": "A revolutionary new microscope could reveal the hidden machinery of life",
+    "summary": "Researchers have developed a revolutionary microscope that uses an incredibly powerful laser to make previously invisible cellular structures easier to see. The technology dramatically improves image clarity, allowing scientists to examine small proteins that conventional electron microscopes struggle to capture. It could eventually reveal how tiny molecular machines interact inside cells, providing an unprecedented look at the hidden workings of life.",
+    "labels_src": [
+      "science-space"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0015302612551209296,
+      "cycling-outdoors": 8.9403115078639e-05,
+      "games-tabletop": 0.0010674695141393
+    },
+    "latency_s": 3.908714812947437
+  },
+  {
+    "id": "fun-045",
+    "profile": "fun.v1",
+    "title": "Astronomers uncover new secrets of the Universe\u2019s first five minutes",
+    "summary": "Scientists have achieved a major breakthrough in understanding the Universe\u2019s earliest moments, measuring the amount of helium formed in the first five minutes after the Big Bang with unprecedented precision. Using one of the world\u2019s most powerful telescopes, an international team studied 15 remarkably pristine galaxies that act as cosmic time capsules, preserving clues from nearly 13.8 billion years ago.",
+    "labels_src": [
+      "science-space"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0017443581597267937,
+      "cycling-outdoors": 7.95711152100941e-05,
+      "games-tabletop": 0.0005656340918719767
+    },
+    "latency_s": 3.8544028979958966
+  },
+  {
+    "id": "fun-046",
+    "profile": "fun.v1",
+    "title": "Very Important Partners Behind Maker Faire Bay Area",
+    "summary": "Fun sponsor activities to check out at Maker Faire Bay Area. The post Very Important Partners Behind Maker Faire Bay Area appeared first on Make: DIY Projects and Ideas for Makers .",
+    "labels_src": [
+      "diy-woodworking",
+      "local-culture-events"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.005830431148260454,
+      "cycling-outdoors": 0.008973886746731576,
+      "games-tabletop": 0.012842064655487855
+    },
+    "latency_s": 3.4913244120543823
+  },
+  {
+    "id": "fun-047",
+    "profile": "fun.v1",
+    "title": "Maker Faire Rome 2026: 400+ Stories Of Innovation, Creativity and Discovery",
+    "summary": "Maker Faire Rome \u2013 The European Edition: 23\u201325 October 2026Gazometro Ostiense, RomeTickets are available exclusively online at makerfairerome.eu. Humanoid football, hands-on research, and more return to the Gazometro: The 14th edition runs from 23 to 25 October with 26 secondary schools, 27 universities and research centers, 145 projects and new programs spanning robotics, craft, books, food [\u2026] The post Maker Faire Rome 2026: 400+ Stories Of Innovation, Creativity and Discovery appeared first on Make: DIY Projects and Ideas for Makers .",
+    "labels_src": [
+      "diy-woodworking",
+      "local-culture-events"
+    ],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.012970679458720595,
+      "cycling-outdoors": 0.000319650645785038,
+      "games-tabletop": 0.002373079025097942
+    },
+    "latency_s": 4.398178135044873
+  },
+  {
+    "id": "fun-048",
+    "profile": "fun.v1",
+    "title": "Meta delays new business terms after publisher pushback on AI scraping",
+    "summary": "Meta is delaying the enforcement of its new business terms after publishers raised concerns that they could allow the company to scrape news sites for AI training, as reported earlier by Fast Company . In a statement to The Verge , Meta spokesperson Daniel Roberts says the terms will go into effect on November 20th \"to allow more time for us to explain to our partners and stakeholders what's changing and what's not.\" The business terms , which were originally supposed to go into effect on October 30th, appeared to give Meta permission to freely scrape the new sites that use its platforms, while using the material for AI training. Though Meta u \u2026 Read the full story at The Verge.",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.0035526609547906107,
+      "cycling-outdoors": 0.00035486692047852734,
+      "games-tabletop": 0.0049565412372214205
+    },
+    "latency_s": 4.386969443061389
+  },
+  {
+    "id": "fun-049",
+    "profile": "fun.v1",
+    "title": "Netflix can\u2019t fire its way out of this downward spiral",
+    "summary": "Netflix co-CEO Ted Sarandos. | Photo by Noam Galai/Getty Images Netflix co-CEOs Ted Sarandos and Greg Peters assured investors this week that they have nothing to be concerned about. Sure, the company was going to lay off 1,000 employees , downsizing its product, tech, and legal departments , and was ousting its chief content officer , film chairman , and film vice president . But it had also hired a new COO - \"one of the most effective at-scale operators in the entertainment industry,\" Sarandos said - to turn things around. Though executive shake-ups aren't uncommon, having so many of them back to back would send a concerning message even in the best of circumstances. With Netflix, however,",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.004383593444146322,
+      "cycling-outdoors": 0.000438304334472232,
+      "games-tabletop": 0.0075915258293505926
+    },
+    "latency_s": 4.461962388944812
+  },
+  {
+    "id": "fun-050",
+    "profile": "fun.v1",
+    "title": "Feds want robotaxis to signal \u2018I\u2019m driving\u2019 with cyan-colored lights",
+    "summary": "After years of debating how driverless cars should tell the world no one is at the wheel - flashing text, audio alerts, custom lights - the feds just stepped in with a single answer: cyan. The National Highway Traffic Safety Administration released proposed changes to Federal Motor Vehicle Safety Standard (FMVSS) No. 108 , specifically rewriting the rules to fit autonomous vehicles. It's a mix of cutting red tape for human-free designs and standardizing how robotaxis communicate with the world around them - starting with a distinctive blue-green light. NHTSA is proposing cyan-colored marker lamps \"to clearly and consistently signal to law e \u2026 Read the full story at The Verge.",
+    "labels_src": [],
+    "labels": [],
+    "score": 0.0,
+    "probabilities": {
+      "books-film-music": 0.004919811315162117,
+      "cycling-outdoors": 0.0013737652716022694,
+      "games-tabletop": 0.003943848033570779
+    },
+    "latency_s": 4.368908643024042
+  }
+]
