@@ -100,6 +100,7 @@
     - Overlapping categories (ML methods vs LLM apps vs experimentation) are separated by explicit criteria.
   - Tags: #eval #profiles
   - Assignee: @dev
+  - Completed: 2026-10-24 16:41 UTC
   - Verified by: @owner
   - Evidence: profile criteria and harness/result updates.
   - Resolution: Tuned the category taxonomy in four iterations to reduce overlap and improve classification quality.
@@ -112,9 +113,89 @@
     - `eval/results-0.8b-threshold-0.62.json` and `eval/predictions-0.8b-threshold-0.62.json` are recorded.
   - Tags: #eval #threshold
   - Assignee: @dev
+  - Completed: 2026-10-24 18:43 UTC
   - Verified by: @owner
   - Evidence: threshold results and predictions artifacts.
   - Resolution: Selected the 0.62 threshold after a five-point sweep and added prediction output for manual label comparison.
+
+- [x] TASK-007: Config, DB schema, logging, packaging
+  - Priority: High
+  - Acceptance criteria:
+    - `app/config.py` loads environment/`.env` values and validates settings.
+    - `app/db.py` and `app/schema.sql` initialize SQLite with WAL and schema versioning.
+    - `app/logging_config.py` provides rotating file and stream logs.
+    - `pyproject.toml`, `requirements.txt`, and `.env.example` make the app installable and runnable.
+  - Tags: #backend
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:31 UTC
+  - Verified by: @owner
+  - Evidence: app/config.py; app/db.py; app/schema.sql; app/logging_config.py; app/timeutil.py; app/versioning.py; .env.example; pyproject.toml; requirements.txt.
+  - Resolution: Established the application foundation: validated configuration, SQLite schema, logging, and packaging.
+
+- [x] TASK-008: Database seeding and feed catalog
+  - Priority: High
+  - Acceptance criteria:
+    - `app/seed.py` imports profile presets and validates public HTTP(S) feed URLs.
+    - `profiles/catalog.yaml` supplies seeded feeds for `ds.v1` and `fun.v1`.
+    - First run seeds both profiles and sets one active profile.
+  - Tags: #backend #seed
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:31 UTC
+  - Verified by: @owner
+  - Evidence: app/seed.py; profiles/catalog.yaml.
+  - Resolution: Added first-run database seeding and the per-profile feed catalog.
+
+- [x] TASK-009: Feed ingestion and classification services
+  - Priority: High
+  - Acceptance criteria:
+    - `app/services/feeds.py` fetches, parses, and dedupes feeds with per-feed error isolation.
+    - `app/services/classify.py` calls Ollama `/v1/systemone` per item and category and caches results by category version and model.
+    - Model and feed failures surface actionable errors.
+  - Tags: #backend #feeds #classify
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:31 UTC
+  - Verified by: @owner
+  - Evidence: app/services/feeds.py; app/services/classify.py.
+  - Resolution: Implemented the ingestion and classification pipeline, including dedupe, caching, and error handling.
+
+- [x] TASK-010: Digest, ranking, preferences, and job runner
+  - Priority: High
+  - Acceptance criteria:
+    - `app/services/digest.py` builds the 72-hour digest grouped by category and ranked by probability × weight × recency decay.
+    - `app/services/jobs.py` runs refresh and rescore jobs with progress and retry.
+    - `app/services/preferences.py` manages settings such as `hide_low_confidence` and the active profile.
+  - Tags: #backend #digest #jobs
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:31 UTC
+  - Verified by: @owner
+  - Evidence: app/services/digest.py; app/services/jobs.py; app/services/preferences.py.
+  - Resolution: Added digest ranking, the job runner, and preference handling.
+
+- [x] TASK-011: FastAPI application and routes
+  - Priority: High
+  - Acceptance criteria:
+    - `app/main.py` creates the app, initializes the database, seeds data, and mounts templates and static files.
+    - `app/routes/pages.py` serves the digest, refresh, job fragments, retry, and health endpoints.
+    - The app starts locally via the `feed-filter` entry point.
+  - Tags: #backend #routes
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:31 UTC
+  - Verified by: @owner
+  - Evidence: app/main.py; app/routes/pages.py; app/__main__.py.
+  - Resolution: Wired the FastAPI application and HTTP routes for digest, refresh, jobs, retry, and health checks.
+
+- [x] TASK-012: Jinja/HTMX templates and static UI
+  - Priority: High
+  - Acceptance criteria:
+    - `base.html`, `digest.html`, and `partials/job.html` render digest and job state.
+    - `app/static/app.css`, `htmx.min.js`, and the favicon support the HTMX UI.
+    - Refresh progress polls via HTMX and renders without a full-page reload.
+  - Tags: #ui
+  - Assignee: @dev
+  - Completed: 2026-10-25 18:31 UTC
+  - Verified by: @owner
+  - Evidence: app/templates/base.html; app/templates/digest.html; app/templates/partials/job.html; app/static/app.css; app/static/htmx.min.js; app/static/favicon.png.
+  - Resolution: Delivered the Jinja/HTMX interface for the digest, job progress, and retry flow.
 
 ## Open backlog
 
@@ -126,3 +207,4 @@
 
 - [2026-10-24 08:08 UTC] @owner: Created this tracker from the TODO.md skeleton and added initial tasks.
 - [2026-10-24 18:45 UTC] @owner: Completed and verified TASK-002 - TASK-006.
+- [2026-10-25 18:35 UTC] @owner: Completed and verified TASK-007 - TASK-012.
