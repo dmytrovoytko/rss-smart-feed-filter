@@ -234,6 +234,32 @@
   - Evidence: README.md; _docs/screenshots/.
   - Resolution: Documented workflow and architecture, added UI screenshots.
 
+- [x] TASK-016: Naming and wording fixes
+  - Priority: Medium
+  - Acceptance criteria:
+    - Project naming is consistent across `_docs/spec.md`, `_docs/bootstrap.md`, and `pyproject.toml`.
+    - `pyproject.toml` `readme` points to an existing file.
+    - The verification section documents that some tasks may require multiple verifiers.
+  - Tags: #docs #cleanup
+  - Assignee: @owner
+  - Completed: 2026-11-01 13:12 UTC
+  - Verified by: @owner
+  - Evidence: _docs/bootstrap.md; _docs/process.md; _docs/spec.md; pyproject.toml.
+  - Resolution: Aligned project naming, fixed the bootstrap wording, documented multi-verifier tasks, and corrected the package readme path to `README.md`.
+
+- [x] TASK-017: README quickstart and configuration
+  - Priority: Medium
+  - Acceptance criteria:
+    - README documents Quickstart and Configuration.
+    - README repository tree and profile link match the repository.
+    - Model-gate wording matches the recorded evaluation results.
+  - Tags: #docs
+  - Assignee: @owner
+  - Completed: 2026-11-01 13:13 UTC
+  - Verified by: @owner
+  - Evidence: README.md.
+  - Resolution: Added Quickstart/Configuration, corrected the spec path and profile link, and reworded the gate result as falling short of the original targets.
+
 ## Open backlog
 
 ## Open questions
@@ -246,3 +272,4 @@
 - [2026-10-24 18:45 UTC] @owner: Completed and verified TASK-002 - TASK-006.
 - [2026-10-25 18:35 UTC] @owner: Completed and verified TASK-007 - TASK-012.
 - [2026-10-25 20:15 UTC] @owner: Completed and verified TASK-013 - TASK-015.
+- [2026-11-01 13:13 UTC] @owner: Completed and verified TASK-016 - TASK-017.
