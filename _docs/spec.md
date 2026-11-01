@@ -1,8 +1,8 @@
-# Feed Filter — Product Requirements Document
+# Smart Feed Filter — Product Requirements Document
 
 **Status:** Draft v0.1  
 **Date:** 2026-10-23  
-**Working name:** Feed Filter  
+**Working name:** Smart Feed Filter  
 **Scope:** v1, local single-user web app  
 **Decision model:** `tev1:0.8b` via Ollama (fallback `tev1:4b` if the Phase 0 gate fails)
 
@@ -10,7 +10,7 @@
 
 ## 0. Summary
 
-Feed Filter turns public RSS feeds into a short, category-grouped digest for one person. The user defines a profile: a small set of categories, each with a name, description, criteria, and weight. A local decision model scores every feed item against those categories, and the app shows the last 72 hours grouped by category, ranked inside each category, with tags and a one-line reason.
+Smart Feed Filter turns public RSS feeds into a short, category-grouped digest for one person. The user defines a profile: a small set of categories, each with a name, description, criteria, and weight. A local decision model scores every feed item against those categories, and the app shows the last 72 hours grouped by category, ranked inside each category, with tags and a one-line reason.
 
 The product is a filtering engine, not a summarizer. It does not fetch article bodies, connect to private accounts, or generate prose. Everything runs locally against a SQLite database and a local Ollama instance.
 
@@ -20,7 +20,7 @@ The product is a filtering engine, not a summarizer. It does not fetch article b
 
 Professionals who still use RSS face two problems: too many items, and no way to express "what I care about this month" without writing code or maintaining keyword rules. Generic readers sort by recency and source. AI summarizers add reading work instead of removing it.
 
-Feed Filter removes the triage step. The user states interests once, gets a ranked shortlist, and can change those interests in minutes. Edits are previewed and applied retroactively, so the digest does not silently drift.
+Smart Feed Filter removes the triage step. The user states interests once, gets a ranked shortlist, and can change those interests in minutes. Edits are previewed and applied retroactively, so the digest does not silently drift.
 
 ---
 

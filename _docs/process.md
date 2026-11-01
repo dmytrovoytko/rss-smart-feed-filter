@@ -346,7 +346,7 @@ If the next step needs a decision, credential, or external dependency, use `Reas
 ### Verification
 
 - `[x]` requires `Verified by: @qa` or `Verified by: @owner`.
-- The verifier must not be the sole implementer.
+- The verifier must not be the sole implementer. Some tasks may require multiple verifiers (`@owner` and `@qa`).
 - If the same agent holds both `@dev` and `@qa`, `@owner` must sign off explicitly.
 - Verification is read-only by default. If the verifier must edit files, park the task to `[!] Assignee: @pm` with `Reason: rework`.
 - If verification fails, add a `#bug` discussion comment with details. The task is parked to `[!]` for triage `Assignee: @pm` with `Reason: rework`.

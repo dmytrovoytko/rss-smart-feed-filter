@@ -3,7 +3,7 @@
 A new repository needs only these coordination files:
 
 - `AGENTS.md` — an entrypoint that tells agents to read this process and `TODO.md`.
-- `_docs/process.md` = process, this file.
+- `_docs/process.md` = coordination process.
 - `TODO.md` — the active task tracker.
 - `.gitignore` — includes `.locks/` so lock directories are never committed.
 
