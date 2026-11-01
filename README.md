@@ -33,21 +33,23 @@ Local classifier (Ollama) scores new items
 
 - Smart Feed categorization processing
 
-![Smart Feed categorization processing](/_docs/screenshots/smart-feed-filtering.png)
+![Smart Feed categorization processing](_docs/screenshots/smart-feed-filtering.png)
 
 - Digest grouped by category, ranked items with match confidence
 
-![Digest grouped by category, ranked items with match confidence](/_docs/screenshots/feed-categorized-filtered.png)
+![Digest grouped by category, ranked items with match confidence](_docs/screenshots/feed-categorized-filtered.png)
 
 - Digest grouped by category, collapsed, including `Low confidence` group and sources
 
-![Digest grouped by category, collapsed](/_docs/screenshots/feed-categories-collapsed.png)
+![Digest grouped by category, collapsed](_docs/screenshots/feed-categories-collapsed.png)
 
 ## Code
 
 [GitHub repo structure](https://github.com/dmytrovoytko/rss-smart-feed-filter)
 
 ```
+├── _docs
+│   └── spec.md
 ├── app
 │   ├── config.py
 │   ├── db.py
@@ -64,7 +66,7 @@ Local classifier (Ollama) scores new items
 │   ├── timeutil.py
 │   └── versioning.py
 ├── data
-│   └── feedfilter.db
+│   └── feedfilter.db   # generated at runtime (not committed)
 ├── eval/
 ├── profiles
 │   ├── catalog.yaml
@@ -72,9 +74,40 @@ Local classifier (Ollama) scores new items
 │   └── fun.v1.yaml
 ├── pyproject.toml
 ├── requirements.txt
-├── spec.md
 └── tests/
 ```
+
+## Quickstart
+
+Requirements: Python 3.12+ and a local [Ollama](https://ollama.com) install.
+
+```bash
+pip install -e .
+ollama pull tev1:0.8b
+cp .env.example .env   # optional; built-in defaults work without it
+feed-filter
+```
+
+Then open <http://127.0.0.1:8000> and press **Refresh** to build the first digest. On first run the app creates the SQLite database under `data/` and seeds both `ds.v1` and `fun.v1` profiles with their feed catalogs.
+
+## Configuration
+
+Settings come from the environment or a local `.env` file; `.env.example` lists them all.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama endpoint |
+| `TEV_MODEL` | `tev1:0.8b` | Decision model |
+| `DB_PATH` | `./data/feedfilter.db` | SQLite database file |
+| `LOG_PATH` | `./data/feedfilter.log` | Log file |
+| `LOG_LEVEL` | `INFO` | Log verbosity |
+| `HOST` | `127.0.0.1` | Bind address |
+| `PORT` | `8000` | HTTP port |
+| `MAX_NEW_ITEMS` | `50` | Items classified per refresh |
+| `RETENTION_DAYS` | `30` | Item retention |
+| `WINDOW_HOURS` | `72` | Digest window |
+| `RESCORE_DAYS` | `14` | Retroactive re-score window |
+| `THRESHOLD` | `0.55` | Default match threshold for new profiles |
 
 ## How I Built It
 
@@ -91,13 +124,13 @@ Local classifier (Ollama) scores new items
 
 Reasons are templated, never generated. Ranking handles ordering. Retroactive edits use a preview-diff-then-atomic-apply flow over the last 14 days; weight edits reorder without model calls, threshold edits re-filter cached probabilities.
 
-Before building UI, I ran a model gate via `python eval/harness.py --gate`: a 100-item labeled set (50 per profile) scored on macro-F1, precision@10, latency, and failures. The local `tev1:0.8b` model passed my selection after category and threshold tuning; fallback `tev1:4b` documented.
+Before building UI, I ran a model gate via `python eval/harness.py --gate`: a 100-item labeled set (50 per profile) scored on macro-F1, precision@10, latency, and failures. Despite falling short of the originally set targets the local `tev1:0.8b` model results satisfied my expectations after category and threshold tuning; fallback `tev1:4b` documented.
 
 ### The hard part
 
 Categorizing work content was (is?) harder than off-work (fun) content because real-world topics overlap heavily (ML methods vs. LLM apps vs. MLOps vs. experimentation), which is exactly why the spec encodes separate criteria fields and why `ds.v1` needed more tuning cycles than the fun profile.
 
-Here is the sample of [`ds.v1` profile](/profiles/ds.v1.yaml):
+Here is the sample of [`ds.v1` profile](profiles/ds.v1.yaml):
 
 ```
 id: ds.v1
