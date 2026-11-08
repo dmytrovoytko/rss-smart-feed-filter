@@ -260,7 +260,58 @@
   - Evidence: README.md.
   - Resolution: Added Quickstart/Configuration, corrected the spec path and profile link, and reworded the gate result as falling short of the original targets.
 
+- [x] TASK-018: Plan tracker updates and criteria improvements
+  - Priority: Medium
+  - Acceptance criteria:
+    - Review TODO.md and git log for untracked or inconsistent work.
+    - Map current project state against `_docs/project-criteria.md`.
+    - Produce backlog records for for testing, CI/CD, and containerization.
+  - Tags: #planning #tracker #docs
+  - Assignee: @pm
+  - Completed: 2026-11-08 09:15 UTC
+  - Verified by: @owner
+  - Evidence: TODO.md, _docs/project-criteria.md.
+  - Resolution: Planned TASK-019 (FastAPI TestClient integration tests), TASK-020 (GitHub Actions CI), TASK-021 (Docker Compose).
+
 ## Open backlog
+
+- [ ] TASK-019: Add FastAPI TestClient integration tests
+  - Priority: High
+  - Acceptance criteria:
+    - Tests use `fastapi.testclient.TestClient` against `create_app`.
+    - Cover the digest, refresh, job fragment, retry, and `/healthz` endpoints.
+    - Use a temporary SQLite database and stubbed classifier; no network or live Ollama.
+    - `python -m unittest discover -s tests -v` passes with the new tests.
+  - Tags: #tests #integration
+  - Assignee: @unassigned
+  - Role: @dev
+  - Dependencies: TASK-014
+  - Notes: Targets the Testing criterion (both unit and integration tests exist).
+
+- [ ] TASK-020: Add GitHub Actions CI workflow
+  - Priority: High
+  - Acceptance criteria:
+    - `.github/workflows/ci.yml` runs on push and pull request.
+    - CI installs the package with dev dependencies and runs `ruff check .` and `python -m unittest discover -s tests -v`.
+    - The workflow passes on the current default branch.
+  - Tags: #ci
+  - Assignee: @unassigned
+  - Role: @dev
+  - Dependencies: TASK-014
+  - Notes: Targets the CI/CD criterion.
+
+- [ ] TASK-021: Containerize app and Ollama with Docker Compose
+  - Priority: Medium
+  - Acceptance criteria:
+    - A `Dockerfile` builds the application.
+    - `docker-compose.yml` starts the app and an Ollama service with a persistent SQLite volume.
+    - `docker compose up` serves the digest at `http://127.0.0.1:8000`.
+    - No secrets or host-only paths are baked into images.
+  - Tags: #docker #deploy
+  - Assignee: @unassigned
+  - Role: @dev
+  - Dependencies: None
+  - Notes: Targets the Containerization criterion; keep the loopback-only default.
 
 ## Open questions
 
@@ -273,3 +324,4 @@
 - [2026-10-25 18:35 UTC] @owner: Completed and verified TASK-007 - TASK-012.
 - [2026-10-25 20:15 UTC] @owner: Completed and verified TASK-013 - TASK-015.
 - [2026-11-01 13:13 UTC] @owner: Completed and verified TASK-016 - TASK-017.
+- [2026-11-08 09:18 UTC] @owner: Completed and verified TASK-018, added TASK-019 - TASK-021.
