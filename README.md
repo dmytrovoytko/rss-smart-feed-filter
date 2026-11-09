@@ -1,5 +1,7 @@
 # Smart Feed Filter: Tuning My RSS Digest with a Local JEV-like model in Ollama
 
+[![CI](https://github.com/dmytrovoytko/rss-smart-feed-filter/actions/workflows/ci.yml/badge.svg)](https://github.com/dmytrovoytko/rss-smart-feed-filter/actions/workflows/ci.yml)
+
 **Smart Feed Filter** turns public RSS feeds into a short, category-grouped digest for one person.
 
 The problem: professionals with RSS still drown in unread items, and generic readers sort by recency while AI summarizers add reading work instead of removing it.
@@ -48,6 +50,9 @@ Local classifier (Ollama) scores new items
 [GitHub repo structure](https://github.com/dmytrovoytko/rss-smart-feed-filter)
 
 ```
+├── .github
+│   └── workflows
+│       └── ci.yml
 ├── _docs
 │   └── spec.md
 ├── app
@@ -72,9 +77,12 @@ Local classifier (Ollama) scores new items
 │   ├── catalog.yaml
 │   ├── ds.v1.yaml
 │   └── fun.v1.yaml
+├── tests/
+├── .dockerignore
+├── Dockerfile
+├── docker-compose.yml
 ├── pyproject.toml
-├── requirements.txt
-└── tests/
+└── requirements.txt
 ```
 
 ## Quickstart
@@ -84,11 +92,31 @@ Requirements: Python 3.12+ and a local [Ollama](https://ollama.com) install.
 ```bash
 pip install -e .
 ollama pull tev1:0.8b
-cp .env.example .env   # optional; built-in defaults work without it
+cp .env.example .env   # optional locally; required for Docker Compose
 feed-filter
 ```
 
 Then open <http://127.0.0.1:8000> and press **Refresh** to build the first digest. On first run the app creates the SQLite database under `data/` and seeds both `ds.v1` and `fun.v1` profiles with their feed catalogs.
+
+## Docker Compose
+
+The full stack also runs with Docker Compose, including Ollama. Compose reads `.env`, so create it first:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Then open <http://127.0.0.1:8000>. Compose starts three services: `ollama`, a one-shot `ollama-pull` that fetches `TEV_MODEL`, and `app`. SQLite data and downloaded models persist in named volumes.
+
+Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OLLAMA_BASE_URL_DOCKER` | `http://ollama:11434` | App-to-Ollama endpoint inside Compose; set to `http://host.docker.internal:11434` for a host Ollama |
+| `OLLAMA_PUBLISH_HOST` | `127.0.0.1` | Host interface for the published Ollama port |
+
+The app binds `0.0.0.0` inside the container, but its host port and the Ollama host port are published on loopback by default. Relative `DB_PATH`/`LOG_PATH` values resolve under `/app` and persist in the `feedfilter-data` volume; custom absolute paths need a matching volume mount.
 
 ## Configuration
 
@@ -108,6 +136,19 @@ Settings come from the environment or a local `.env` file; `.env.example` lists 
 | `WINDOW_HOURS` | `72` | Digest window |
 | `RESCORE_DAYS` | `14` | Retroactive re-score window |
 | `THRESHOLD` | `0.55` | Default match threshold for new profiles |
+
+## Testing and CI
+
+Unit and service tests plus FastAPI `TestClient` integration tests live under `tests/`:
+
+```bash
+python -m unittest discover -s tests -v
+ruff check .
+```
+
+The integration tests exercise the digest, refresh, job fragment, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
+
+GitHub Actions runs lint and the full test suite on every push and pull request via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## How I Built It
 
