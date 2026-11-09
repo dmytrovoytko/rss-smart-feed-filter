@@ -1,0 +1,71 @@
+name: smart-feed-filter
+
+services:
+  ollama:
+    # image: ollama/ollama:latest # ~3Gb GPU enabled image
+    # image: alpine/ollama:latest # ~40Mb CPU-only image
+    image: docker.io/alpine/ollama:0.40.15 # tested, working, must be 0.35.1 or newer
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "${OLLAMA_PUBLISH_HOST:-127.0.0.1}:11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  ollama-pull:
+    # image: ollama/ollama:latest # ~3Gb GPU enabled image
+    # image: alpine/ollama:latest # ~40Mb CPU-only image
+    image: docker.io/alpine/ollama:0.40.15 # tested, working, must be 0.35.1 or newer
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      TEV_MODEL: "${TEV_MODEL:-tev1:0.8b}"
+    entrypoint: ["/bin/sh", "-c", "ollama pull \"$${TEV_MODEL}\""]
+    restart: "no"
+
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "${PORT:-8000}"
+      DB_PATH: "${DB_PATH:-/app/data/feedfilter.db}"
+      LOG_PATH: "${LOG_PATH:-/app/data/feedfilter.log}"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL_DOCKER:-http://ollama:11434}"
+      TEV_MODEL: "${TEV_MODEL:-tev1:0.8b}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - feedfilter-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PORT:-8000}/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ollama-models:
+  feedfilter-data:
