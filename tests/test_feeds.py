@@ -132,6 +132,7 @@ class FeedTestCase(unittest.TestCase):
         self.assertEqual(summary["new_items"], 2)
         self.assertEqual(summary["skipped_old"], 1)
         self.assertEqual(summary["items_total"], 2)
+        self.assertEqual(summary["window_items"], 2)
         self.assertEqual(summary["pending_items"], 2)
 
         items = self.conn.execute(
@@ -181,14 +182,46 @@ class FeedTestCase(unittest.TestCase):
 
         self.assertEqual(second["new_items"], 0)
         self.assertEqual(second["updated_items"], 1)
-        self.assertEqual(second["duplicate_entries"], 1)
-        self.assertEqual(second["skipped_old"], 1)
+        self.assertEqual(second["duplicate_entries"], 0)
+        self.assertEqual(second["skipped_old"], 2)
         self.assertEqual(second["items_total"], 2)
         updated = self.conn.execute(
             "SELECT title FROM items WHERE canonical_url = ?",
             ("https://example.com/posts/a?a=1&b=2",),
         ).fetchone()
         self.assertEqual(updated["title"], "Post A updated")
+
+    def test_refresh_caps_newest_entries_per_feed(self) -> None:
+        self.add_feed()
+        document = rss_document(
+            [
+                {
+                    "title": f"Post {index}",
+                    "link": f"https://example.com/posts/{index}",
+                    "published": NOW - timedelta(hours=index),
+                }
+                for index in range(1, 6)
+            ]
+        )
+        settings = replace(self.settings, max_items_per_feed=3)
+
+        summary = refresh_profile(
+            self.conn,
+            settings,
+            PROFILE_ID,
+            fetcher=self.fetcher(
+                FeedFetchResult(status="ok", url=SOURCE_URL, content=document)
+            ),
+            now=NOW,
+        )
+
+        self.assertEqual(summary["new_items"], 3)
+        self.assertEqual(summary["capped_entries"], 2)
+        titles = [
+            row["title"]
+            for row in self.conn.execute("SELECT title FROM items ORDER BY published_at DESC")
+        ]
+        self.assertEqual(titles, ["Post 1", "Post 2", "Post 3"])
 
     def test_title_key_dedupe_updates_newest_metadata(self) -> None:
         self.add_feed()
@@ -218,7 +251,7 @@ class FeedTestCase(unittest.TestCase):
                 {
                     "title": "Same Story!",
                     "link": "https://example.com/two",
-                    "published": NOW - timedelta(hours=12),
+                    "published": NOW - timedelta(hours=3),
                     "summary": "newest version",
                 }
             ]
@@ -374,7 +407,15 @@ class FeedTestCase(unittest.TestCase):
         )
         self.conn.commit()
 
-        self.assertEqual(count_pending_items(self.conn, PROFILE_ID, "test"), 2)
+        pending_kwargs = {
+            "window_start": to_utc_iso(NOW - timedelta(hours=self.settings.window_hours)),
+            "window_end": to_utc_iso(NOW),
+            "max_items_per_feed": self.settings.max_items_per_feed,
+        }
+        self.assertEqual(
+            count_pending_items(self.conn, PROFILE_ID, "test", **pending_kwargs),
+            1,
+        )
         categories = self.conn.execute(
             "SELECT id, version_hash FROM categories WHERE profile_id = ? AND enabled = 1",
             (PROFILE_ID,),
@@ -399,7 +440,10 @@ class FeedTestCase(unittest.TestCase):
                 ),
             )
         self.conn.commit()
-        self.assertEqual(count_pending_items(self.conn, PROFILE_ID, "test"), 1)
+        self.assertEqual(
+            count_pending_items(self.conn, PROFILE_ID, "test", **pending_kwargs),
+            0,
+        )
 
         deleted = apply_retention(self.conn, self.settings, now=NOW)
 
@@ -415,6 +459,45 @@ class FeedTestCase(unittest.TestCase):
                 "SELECT 1 FROM items WHERE canonical_url = ?", (recent_url,)
             ).fetchone()
         )
+
+
+    def test_window_expands_item_retention(self) -> None:
+        feed_id = self.add_feed()
+        url = "https://example.com/forty-days"
+        self.conn.execute(
+            """
+            INSERT INTO items (
+                feed_id, canonical_url, url_hash, title, summary,
+                published_at, fetched_at, content_hash
+            ) VALUES (?, ?, ?, ?, '', ?, ?, ?)
+            """,
+            (
+                feed_id,
+                url,
+                url_hash(url),
+                "Forty days",
+                to_utc_iso(NOW - timedelta(days=40)),
+                to_utc_iso(NOW),
+                content_hash("Forty days"),
+            ),
+        )
+        self.conn.commit()
+
+        long_window = apply_retention(
+            self.conn,
+            self.settings,
+            window_hours=45 * 24,
+            now=NOW,
+        )
+        self.assertEqual(long_window["items_deleted"], 0)
+
+        short_window = apply_retention(
+            self.conn,
+            self.settings,
+            window_hours=72,
+            now=NOW,
+        )
+        self.assertEqual(short_window["items_deleted"], 1)
 
 
 class FakeResponse:

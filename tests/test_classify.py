@@ -26,6 +26,7 @@ from app.services.classify import (
     parse_answers,
 )
 from app.services.feeds import content_hash, url_hash
+from app.services.preferences import set_max_new_items
 from app.timeutil import to_utc_iso
 
 PROFILE_ID = "ds.v1"
@@ -170,6 +171,17 @@ class ClassifyTestCase(unittest.TestCase):
         self.conn.commit()
         return int(cursor.lastrowid)
 
+    def pending_count(self, model: str | None = None, *, now: datetime | None = None) -> int:
+        now = now or NOW
+        return count_pending_items(
+            self.conn,
+            PROFILE_ID,
+            model or self.settings.tev_model,
+            window_start=to_utc_iso(now - timedelta(hours=self.settings.window_hours)),
+            window_end=to_utc_iso(now),
+            max_items_per_feed=self.settings.max_items_per_feed,
+        )
+
     def test_build_state_uses_title_summary_and_truncates_on_word_boundary(self) -> None:
         self.assertEqual(
             build_state({"title": "Title", "summary": "Summary"}),
@@ -248,7 +260,7 @@ class ClassifyTestCase(unittest.TestCase):
         self.assertEqual({row["model"] for row in rows}, {self.settings.tev_model})
         self.assertEqual({row["probability"] for row in rows}, {0.82})
         self.assertEqual({row["created_at"] for row in rows}, {to_utc_iso(NOW)})
-        self.assertEqual(count_pending_items(self.conn, PROFILE_ID, self.settings.tev_model), 0)
+        self.assertEqual(self.pending_count(), 0)
 
     def test_no_pending_items_skips_preflight_and_model_calls(self) -> None:
         self.add_item("Already done", published=NOW - timedelta(hours=1))
@@ -325,7 +337,7 @@ class ClassifyTestCase(unittest.TestCase):
         self.assertEqual(summary["pending_before"], 1)
         self.assertEqual(summary["classified_items"], 1)
         self.assertEqual(
-            count_pending_items(self.conn, PROFILE_ID, new_settings.tev_model),
+            self.pending_count(new_settings.tev_model),
             0,
         )
         new_count = self.conn.execute(
@@ -356,10 +368,7 @@ class ClassifyTestCase(unittest.TestCase):
         )
         self.conn.commit()
 
-        self.assertEqual(
-            count_pending_items(self.conn, PROFILE_ID, self.settings.tev_model),
-            1,
-        )
+        self.assertEqual(self.pending_count(), 1)
         client = FakeClassifier(probability=0.7)
         summary = classify_pending_items(
             self.conn,
@@ -379,6 +388,27 @@ class ClassifyTestCase(unittest.TestCase):
             )
         }
         self.assertEqual(probabilities, {0.7})
+
+    def test_window_override_excludes_older_items(self) -> None:
+        self.add_item("Recent", published=NOW - timedelta(hours=1), slug="recent")
+        self.add_item("Older", published=NOW - timedelta(hours=100), slug="older")
+        self.conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('window_hours', '48')"
+        )
+        self.conn.commit()
+
+        summary = classify_pending_items(
+            self.conn,
+            self.settings,
+            PROFILE_ID,
+            client=FakeClassifier(),
+            now=NOW,
+        )
+
+        self.assertEqual(summary["window_hours"], 48)
+        self.assertEqual(summary["pending_before"], 1)
+        self.assertEqual(summary["selected_items"], 1)
+        self.assertEqual(summary["classified_items"], 1)
 
     def test_limit_classifies_newest_and_reports_backlog(self) -> None:
         oldest = self.add_item("Oldest", published=NOW - timedelta(days=3), slug="oldest")
@@ -410,6 +440,24 @@ class ClassifyTestCase(unittest.TestCase):
         self.assertEqual(classified_ids, {newest, middle})
         self.assertNotIn(oldest, classified_ids)
 
+    def test_settings_limit_overrides_environment_default(self) -> None:
+        for index in range(3):
+            self.add_item(f"Item {index}", published=NOW - timedelta(hours=index + 1))
+
+        set_max_new_items(self.conn, 2)
+        summary = classify_pending_items(
+            self.conn,
+            self.settings,
+            PROFILE_ID,
+            client=FakeClassifier(),
+            now=NOW,
+        )
+
+        self.assertEqual(summary["pending_before"], 3)
+        self.assertEqual(summary["selected_items"], 2)
+        self.assertEqual(summary["classified_items"], 2)
+        self.assertEqual(summary["unprocessed_items"], 1)
+
     def test_failure_does_not_persist_partial_classifications(self) -> None:
         self.add_item("First", published=NOW - timedelta(hours=2), slug="first")
         self.add_item("Second", published=NOW - timedelta(hours=1), slug="second")
@@ -430,6 +478,38 @@ class ClassifyTestCase(unittest.TestCase):
             0,
         )
         self.assertEqual(len(client.calls), 2)
+
+    def test_stop_keeps_completed_classifications_and_leaves_remaining_pending(
+        self,
+    ) -> None:
+        self.add_item("First", published=NOW - timedelta(hours=2), slug="first")
+        newest = self.add_item(
+            "Second",
+            published=NOW - timedelta(hours=1),
+            slug="second",
+        )
+        client = FakeClassifier()
+
+        summary = classify_pending_items(
+            self.conn,
+            self.settings,
+            PROFILE_ID,
+            client=client,
+            limit=2,
+            should_stop=lambda: len(client.calls) >= 1,
+            now=NOW,
+        )
+
+        self.assertTrue(summary["stopped"])
+        self.assertEqual(summary["classified_items"], 1)
+        self.assertEqual(summary["pending_items"], 1)
+        self.assertEqual(summary["pending_after"], 1)
+        self.assertEqual(len(client.calls), 1)
+        classified_ids = {
+            row["item_id"]
+            for row in self.conn.execute("SELECT DISTINCT item_id FROM classifications")
+        }
+        self.assertEqual(classified_ids, {newest})
 
     def test_no_enabled_categories_is_a_noop(self) -> None:
         self.add_item("Uncategorized", published=NOW - timedelta(hours=1))

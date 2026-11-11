@@ -125,6 +125,61 @@ class SeedTests(FoundationTestCase):
                 )
 
 
+class MigrationTests(unittest.TestCase):
+    def test_init_db_adds_job_mode_and_phase_to_v1_database(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "v1.db"
+            conn = sqlite3.connect(db_path)
+            conn.executescript(
+                """
+                CREATE TABLE jobs (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    kind         TEXT NOT NULL CHECK (kind IN ('refresh', 'rescore')),
+                    profile_id   TEXT NOT NULL,
+                    status       TEXT NOT NULL CHECK (
+                        status IN ('queued', 'running', 'preview', 'done', 'failed')
+                    ),
+                    processed    INTEGER NOT NULL DEFAULT 0,
+                    total        INTEGER NOT NULL DEFAULT 0,
+                    error        TEXT,
+                    result_json  TEXT,
+                    created_at   TEXT NOT NULL,
+                    updated_at   TEXT NOT NULL
+                );
+                PRAGMA user_version = 1;
+                INSERT INTO jobs (
+                    kind, profile_id, status, created_at, updated_at
+                ) VALUES (
+                    'refresh', 'ds.v1', 'done',
+                    '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'
+                );
+                """
+            )
+            conn.commit()
+            conn.close()
+
+            init_db(db_path)
+
+            migrated = connect(db_path)
+            try:
+                columns = {
+                    str(row["name"])
+                    for row in migrated.execute("PRAGMA table_info(jobs)")
+                }
+                row = migrated.execute(
+                    "SELECT mode, phase FROM jobs ORDER BY id LIMIT 1"
+                ).fetchone()
+                version = migrated.execute("PRAGMA user_version").fetchone()[0]
+            finally:
+                migrated.close()
+
+        self.assertIn("mode", columns)
+        self.assertIn("phase", columns)
+        self.assertEqual(row["mode"], "refresh")
+        self.assertIsNone(row["phase"])
+        self.assertEqual(version, SCHEMA_VERSION)
+
+
 class VersioningTests(unittest.TestCase):
     def test_whitespace_is_normalized(self) -> None:
         self.assertEqual(normalize_text(" a\n b\tc "), "a b c")

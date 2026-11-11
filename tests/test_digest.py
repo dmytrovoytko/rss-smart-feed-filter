@@ -215,6 +215,24 @@ class DigestTestCase(unittest.TestCase):
         fallback_item = digest["sections"][0]["entries"][0]
         self.assertEqual(fallback_item["effective_at"], to_utc_iso(NOW - timedelta(hours=1)))
 
+    def test_window_and_per_feed_overrides_limit_candidates(self) -> None:
+        for hours in (1, 2, 30, 100):
+            self.add_item(f"Item {hours}", published_hours_ago=hours)
+        self.conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('window_hours', '48')"
+        )
+        self.conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('max_items_per_feed', '2')"
+        )
+        self.conn.commit()
+
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+
+        self.assertEqual(digest["window_hours"], 48)
+        self.assertEqual(digest["max_items_per_feed"], 2)
+        self.assertEqual(digest["window_items"], 2)
+        self.assertEqual(digest["pending_items"], 2)
+
     def test_filters_disabled_stale_wrong_model_and_old_version(self) -> None:
         valid = self.add_item("Valid")
         self.add_score(valid, "books-film-music", 0.8)
@@ -315,10 +333,15 @@ class DigestTestCase(unittest.TestCase):
         html = env.get_template("digest.html").render(
             request=FakeRequest(),
             profile=digest["profile"],
+            profiles=[],
+            active_profile_id=PROFILE_ID,
             feeds=[],
             digest=digest,
             job=None,
             settings=self.settings,
+            max_new_items=self.settings.max_new_items,
+            max_items_per_feed=self.settings.max_items_per_feed,
+            last_refreshed_at=None,
         )
 
         self.assertIn("Books, Film &amp; Music", html)
@@ -326,6 +349,18 @@ class DigestTestCase(unittest.TestCase):
         self.assertIn("Low confidence", html)
         self.assertIn("Best match:", html)
         self.assertIn('class="panel digest-section"', html)
+
+    def test_hide_reason_text_setting(self) -> None:
+        item = self.add_item("Matched item")
+        self.add_score(item, "books-film-music", 0.9)
+        self.conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('hide_reason_text', '1')"
+        )
+        self.conn.commit()
+
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+
+        self.assertTrue(digest["hide_reason_text"])
 
     def test_hide_low_confidence_setting(self) -> None:
         low = self.add_item("Low item")

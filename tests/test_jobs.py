@@ -18,7 +18,9 @@ from app.services.jobs import (
     JobRunner,
     create_job,
     get_job,
+    job_progress,
     latest_job,
+    run_classify_job,
     run_refresh_job,
     update_job,
 )
@@ -41,8 +43,12 @@ class JobTestCase(unittest.TestCase):
         self.addCleanup(self.conn.close)
         seed_database(self.conn, self.settings)
 
-    def start_runner(self, handler) -> JobRunner:
-        runner = JobRunner(self.settings, refresh_handler=handler)
+    def start_runner(self, handler=None, *, classify_handler=None) -> JobRunner:
+        runner = JobRunner(
+            self.settings,
+            refresh_handler=handler,
+            classify_handler=classify_handler,
+        )
         runner.start()
         self.addCleanup(runner.stop)
         return runner
@@ -72,8 +78,9 @@ class JobTestCase(unittest.TestCase):
             job_id: int,
             profile_id: str,
             progress,
+            should_stop,
         ) -> dict[str, object]:
-            progress(1, 2)
+            progress("fetching", 1, 2)
             return {"new_items": 4, "profile_id": profile_id}
 
         runner = self.start_runner(handler)
@@ -87,6 +94,36 @@ class JobTestCase(unittest.TestCase):
         self.assertEqual(job["total"], 2)
         self.assertEqual(job["result"], {"new_items": 4, "profile_id": PROFILE_ID})
 
+    def test_runner_stops_running_job_and_stores_stopped_result(self) -> None:
+        started = threading.Event()
+
+        def handler(
+            conn: sqlite3.Connection,
+            settings: Settings,
+            job_id: int,
+            profile_id: str,
+            progress,
+            should_stop,
+        ) -> dict[str, object]:
+            started.set()
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and not should_stop():
+                time.sleep(0.01)
+            return {"stopped": should_stop()}
+
+        runner = self.start_runner(handler)
+        job_id, created = runner.enqueue_refresh(PROFILE_ID)
+        self.assertTrue(created)
+        self.assertTrue(started.wait(timeout=3))
+        self.assertTrue(runner.request_stop(job_id))
+        self.assertTrue(runner.is_stop_requested(job_id))
+
+        job = self.wait_for_status(job_id, {"done", "failed"})
+
+        self.assertEqual(job["status"], "done")
+        self.assertEqual(job["result"], {"stopped": True})
+        self.assertFalse(runner.is_stop_requested(job_id))
+
     def test_run_refresh_job_merges_classification_progress_and_summary(self) -> None:
         progress: list[tuple[int, int]] = []
 
@@ -95,7 +132,14 @@ class JobTestCase(unittest.TestCase):
                 on_progress(1, 1)
             return {"feeds_total": 1, "pending_items": 2, "items_total": 2}
 
-        def fake_classify(conn, settings, profile_id, *, on_progress=None):
+        def fake_classify(
+            conn,
+            settings,
+            profile_id,
+            *,
+            on_progress=None,
+            should_stop=None,
+        ):
             if on_progress:
                 on_progress(0, 2)
                 on_progress(1, 2)
@@ -118,16 +162,247 @@ class JobTestCase(unittest.TestCase):
                 self.settings,
                 1,
                 PROFILE_ID,
-                lambda processed, total: progress.append((processed, total)),
+                lambda phase, processed, total: progress.append(
+                    (phase, processed, total)
+                ),
+                lambda: False,
             )
 
-        self.assertEqual(progress, [(1, 1), (1, 3), (2, 3), (3, 3)])
+        self.assertEqual(
+            progress,
+            [
+                ("fetching", 1, 1),
+                ("classifying", 0, 2),
+                ("classifying", 1, 2),
+                ("classifying", 2, 2),
+            ],
+        )
+        self.assertEqual(result["mode"], "refresh")
         self.assertEqual(result["feeds_total"], 1)
         self.assertEqual(result["classified_items"], 2)
         self.assertEqual(result["classified_categories"], 16)
         self.assertEqual(result["pending_items"], 0)
         self.assertEqual(result["unprocessed_items"], 0)
         self.assertEqual(result["classification"]["model"], self.settings.tev_model)
+
+    def test_run_classify_job_skips_fetch_and_merges_summary(self) -> None:
+        progress: list[tuple[str, int, int]] = []
+
+        def fake_classify(
+            conn,
+            settings,
+            profile_id,
+            *,
+            on_progress=None,
+            should_stop=None,
+        ):
+            if on_progress:
+                on_progress(0, 2)
+                on_progress(1, 2)
+                on_progress(2, 2)
+            return {
+                "classified_items": 2,
+                "classified_categories": 16,
+                "pending_items": 0,
+                "pending_after": 0,
+                "unprocessed_items": 0,
+                "window_hours": 72,
+                "max_items_per_feed": 10,
+                "model": settings.tev_model,
+                "duration_s": 0.2,
+            }
+
+        with (
+            patch(
+                "app.services.jobs.refresh_profile",
+                side_effect=AssertionError("classify jobs must not fetch feeds"),
+            ),
+            patch(
+                "app.services.jobs.classify_pending_items",
+                side_effect=fake_classify,
+            ),
+        ):
+            result = run_classify_job(
+                self.conn,
+                self.settings,
+                1,
+                PROFILE_ID,
+                lambda phase, processed, total: progress.append(
+                    (phase, processed, total)
+                ),
+                lambda: False,
+            )
+
+        self.assertEqual(
+            progress,
+            [
+                ("classifying", 0, 2),
+                ("classifying", 1, 2),
+                ("classifying", 2, 2),
+            ],
+        )
+        self.assertEqual(result["mode"], "classify")
+        self.assertEqual(result["classified_items"], 2)
+        self.assertEqual(result["pending_after"], 0)
+        self.assertNotIn("feeds_total", result)
+
+    def test_run_refresh_job_publishes_fetch_summary_before_classification(
+        self,
+    ) -> None:
+        job_id = create_job(
+            self.conn,
+            kind="refresh",
+            profile_id=PROFILE_ID,
+            total=1,
+        )
+        observed: list[dict[str, object]] = []
+
+        def fake_refresh(conn, settings, profile_id, *, on_progress=None):
+            if on_progress:
+                on_progress(1, 1)
+            return {
+                "feeds_total": 1,
+                "feeds_failed": 0,
+                "new_items": 2,
+                "updated_items": 0,
+                "window_items": 5,
+                "pending_items": 5,
+            }
+
+        def fake_classify(
+            conn,
+            settings,
+            profile_id,
+            *,
+            on_progress=None,
+            should_stop=None,
+        ):
+            job = get_job(conn, job_id)
+            self.assertIsNotNone(job)
+            observed.append(job)
+            if on_progress:
+                on_progress(0, 2)
+                on_progress(2, 2)
+            return {
+                "classified_items": 2,
+                "classified_categories": 16,
+                "pending_items": 3,
+                "pending_after": 3,
+                "unprocessed_items": 3,
+                "model": settings.tev_model,
+                "duration_s": 0.1,
+            }
+
+        with (
+            patch("app.services.jobs.refresh_profile", side_effect=fake_refresh),
+            patch("app.services.jobs.classify_pending_items", side_effect=fake_classify),
+        ):
+            result = run_refresh_job(
+                self.conn,
+                self.settings,
+                job_id,
+                PROFILE_ID,
+                lambda phase, processed, total: None,
+                lambda: False,
+            )
+
+        self.assertEqual(observed[0]["phase"], "classifying")
+        self.assertEqual(observed[0]["result"]["mode"], "refresh")
+        self.assertEqual(observed[0]["result"]["window_items"], 5)
+        self.assertEqual(result["window_items"], 5)
+
+    def test_job_progress_is_phase_aware_and_capped_while_active(self) -> None:
+        fetching = job_progress(
+            {
+                "status": "running",
+                "mode": "refresh",
+                "phase": "fetching",
+                "processed": 1,
+                "total": 4,
+            }
+        )
+        self.assertEqual(fetching["percent"], 5)
+        self.assertEqual(fetching["label"], "Fetching 1/4")
+
+        classifying = job_progress(
+            {
+                "status": "running",
+                "mode": "refresh",
+                "phase": "classifying",
+                "processed": 0,
+                "total": 2,
+            }
+        )
+        self.assertEqual(classifying["percent"], 20)
+        self.assertEqual(classifying["label"], "Classifying 0/2")
+
+        almost_done = job_progress(
+            {
+                "status": "running",
+                "mode": "refresh",
+                "phase": "classifying",
+                "processed": 2,
+                "total": 2,
+            }
+        )
+        self.assertEqual(almost_done["percent"], 99)
+
+        classify_only = job_progress(
+            {
+                "status": "running",
+                "mode": "classify",
+                "phase": "classifying",
+                "processed": 1,
+                "total": 2,
+            }
+        )
+        self.assertEqual(classify_only["percent"], 50)
+        self.assertEqual(classify_only["label"], "Classifying 1/2")
+
+        done = job_progress(
+            {
+                "status": "done",
+                "mode": "refresh",
+                "phase": "classifying",
+                "processed": 2,
+                "total": 2,
+            }
+        )
+        self.assertEqual(done["percent"], 100)
+
+    def test_classify_jobs_enqueue_and_retry_preserve_mode(self) -> None:
+        calls: list[int] = []
+
+        def handler(
+            conn: sqlite3.Connection,
+            settings: Settings,
+            job_id: int,
+            profile_id: str,
+            progress,
+            should_stop,
+        ) -> dict[str, object]:
+            calls.append(job_id)
+            if len(calls) == 1:
+                raise RuntimeError("first attempt fails")
+            progress("classifying", 1, 1)
+            return {"mode": "classify"}
+
+        runner = self.start_runner(classify_handler=handler)
+        job_id, created = runner.enqueue_classify(PROFILE_ID)
+        self.assertTrue(created)
+
+        with self.assertLogs("app.services.jobs", level="ERROR"):
+            failed = self.wait_for_status(job_id, {"done", "failed"})
+        self.assertEqual(failed["mode"], "classify")
+        self.assertEqual(failed["status"], "failed")
+
+        retry_id, retry_created = runner.enqueue_retry(job_id)
+        self.assertTrue(retry_created)
+        done = self.wait_for_status(retry_id, {"done", "failed"})
+
+        self.assertEqual(done["mode"], "classify")
+        self.assertEqual(done["status"], "done")
+        self.assertEqual(calls, [job_id, retry_id])
 
     def test_second_enqueue_while_running_returns_existing_job(self) -> None:
         started = threading.Event()
@@ -139,11 +414,12 @@ class JobTestCase(unittest.TestCase):
             job_id: int,
             profile_id: str,
             progress,
+            should_stop,
         ) -> dict[str, object]:
             started.set()
             if not release.wait(timeout=3):
                 raise RuntimeError("test did not release handler")
-            progress(1, 1)
+            progress("fetching", 1, 1)
             return {"ok": True}
 
         runner = self.start_runner(handler)
@@ -169,11 +445,12 @@ class JobTestCase(unittest.TestCase):
             job_id: int,
             profile_id: str,
             progress,
+            should_stop,
         ) -> dict[str, object]:
             calls.append(job_id)
             if len(calls) == 1:
                 raise RuntimeError("first attempt fails")
-            progress(1, 1)
+            progress("fetching", 1, 1)
             return {"retried": True}
 
         runner = self.start_runner(handler)
