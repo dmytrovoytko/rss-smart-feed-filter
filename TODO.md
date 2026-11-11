@@ -273,9 +273,7 @@
   - Evidence: TODO.md, _docs/project-criteria.md.
   - Resolution: Planned TASK-019 (FastAPI TestClient integration tests), TASK-020 (GitHub Actions CI), TASK-021 (Docker Compose).
 
-## Open backlog
-
-- [ ] TASK-019: Add FastAPI TestClient integration tests
+- [x] TASK-019: Add FastAPI TestClient integration tests
   - Priority: High
   - Acceptance criteria:
     - Tests use `fastapi.testclient.TestClient` against `create_app`.
@@ -283,35 +281,116 @@
     - Use a temporary SQLite database and stubbed classifier; no network or live Ollama.
     - `python -m unittest discover -s tests -v` passes with the new tests.
   - Tags: #tests #integration
-  - Assignee: @unassigned
+  - Assignee: @dev
+  - Completed: 2026-11-08 12:49 UTC
+  - Verified by: @owner
+  - Evidence: tests/test_routes.py uses TestClient against create_app with a temporary SQLite database; covers digest, refresh, job fragment, retry, settings, profile switching, and `/healthz`; CI passed on origin/main commit 1ae0710.
+  - Resolution: Added route-level integration tests without network access or a live Ollama instance.
   - Role: @dev
   - Dependencies: TASK-014
   - Notes: Targets the Testing criterion (both unit and integration tests exist).
 
-- [ ] TASK-020: Add GitHub Actions CI workflow
+- [x] TASK-020: Add GitHub Actions CI workflow
   - Priority: High
   - Acceptance criteria:
     - `.github/workflows/ci.yml` runs on push and pull request.
     - CI installs the package with dev dependencies and runs `ruff check .` and `python -m unittest discover -s tests -v`.
     - The workflow passes on the current default branch.
   - Tags: #ci
-  - Assignee: @unassigned
+  - Assignee: @dev
+  - Completed: 2026-11-08 12:49 UTC
+  - Verified by: @owner
+  - Evidence: .github/workflows/ci.yml runs on push and pull request, installs `.[dev]`, then runs `ruff check .` and the unit test suite; GitHub Actions run completed successfully on origin/main commit 1ae0710.
+  - Resolution: Added CI for lint and tests on every push and pull request.
   - Role: @dev
   - Dependencies: TASK-014
   - Notes: Targets the CI/CD criterion.
 
-- [ ] TASK-021: Containerize app and Ollama with Docker Compose
+- [x] TASK-021: Containerize app and Ollama with Docker Compose
   - Priority: Medium
   - Acceptance criteria:
-    - A `Dockerfile` builds the application.
-    - `docker-compose.yml` starts the app and an Ollama service with a persistent SQLite volume.
-    - `docker compose up` serves the digest at `http://127.0.0.1:8000`.
-    - No secrets or host-only paths are baked into images.
+    - A `Dockerfile` builds the application with a non-root runtime, persistent `/app/data`, and a healthcheck that follows `PORT`.
+    - `docker-compose.yml` starts `app`, `ollama`, and a one-shot `ollama-pull` with persistent `feedfilter-data` and `ollama-models` volumes.
+    - `docker compose up` serves the digest at `http://127.0.0.1:${PORT:-8000}` with host ports published on loopback by default.
+    - Compose passes behavioral settings from `.env`, including `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, and `LOG_PATH`.
+    - Container-specific settings are explicit: app `HOST=0.0.0.0`, `OLLAMA_BASE_URL_DOCKER` for the app-to-Ollama endpoint, and `OLLAMA_PUBLISH_HOST` for the published Ollama port.
+    - No secrets or host-only paths are baked into images; custom absolute `DB_PATH`/`LOG_PATH` values require a matching volume mount.
   - Tags: #docker #deploy
+  - Assignee: @dev
+  - Completed: 2026-11-10 09:05 UTC
+  - Verified by: @owner
+  - Evidence: Dockerfile; docker-compose.yml; .dockerignore; manual `docker compose up --build` verification by @owner confirmed the app and Ollama stack works.
+  - Resolution: Docker Compose stack built and ran successfully; manual verification complete.
+  - Role: @dev
+  - Dependencies: None
+  - Subtasks:
+    - [x] 1. Add `Dockerfile` with Python 3.12 slim base, non-root user, runtime dependencies, `/app/data`, `EXPOSE 8000`, `PORT`-aware healthcheck, and `feed-filter` entrypoint.
+    - [x] 2. Add `docker-compose.yml` with `app`, `ollama`, and `ollama-pull`; named volumes; model-pull gating; and loopback-only default ports.
+    - [x] 3. Add `.dockerignore` to exclude local caches, data, secrets, and test artifacts from the build context.
+    - [x] 4. Wire `.env` parity: pass behavioral settings through Compose and add `OLLAMA_BASE_URL_DOCKER` plus `OLLAMA_PUBLISH_HOST`.
+    - [x] 5. Map `host.docker.internal` via `extra_hosts` for host-run Ollama.
+    - [x] 6. Document Compose usage, configuration precedence, volume paths, and unavoidable container overrides in `README.md` and `_docs/spec2.md`.
+    - [x] 7. Manually verify `docker compose up --build`, `/healthz`, custom `PORT`, and host/remote Ollama overrides; record evidence.
+  - Notes: Targets the Containerization criterion; keep the loopback-only default. Compose requires `.env` via `env_file`. CI does not build the image or run Compose.
+
+## Open backlog
+
+- [ ] TASK-022: Plan UI/UX improvements
+  - Priority: Medium
+  - Acceptance criteria:
+    - Audit the current digest, job progress, source, and settings interfaces.
+    - Identify usability pain points and candidate improvements with tradeoffs.
+    - Produce a prioritized shortlist for TASK-023 without changing application code.
+  - Tags: #ui #planning
+  - Assignee: @unassigned
+  - Role: @pm
+  - Dependencies: None
+  - Subtasks:
+    - [ ] 1. Audit current digest, job, source, and settings interfaces.
+    - [ ] 2. Identify pain points and candidate improvements.
+    - [ ] 3. Prioritize a shortlist with scope, risks, and acceptance criteria.
+    - [ ] 4. Hand selected improvements to TASK-023.
+  - Notes: Planning only; no code changes.
+
+- [ ] TASK-023: Implement selected UI/UX improvements
+  - Priority: Medium
+  - Acceptance criteria:
+    - Implement the improvements selected in TASK-022.
+    - Keep the loopback-only, local-first constraints and add no dependencies.
+    - Update tests and UI verification for the chosen improvements.
+  - Tags: #ui #tests
+  - Assignee: @unassigned
+  - Role: @dev
+  - Dependencies: TASK-022
+  - Subtasks:
+    - [ ] 1. Add separate Refresh and Classify pending actions.
+    - [ ] 2. Show phase-aware status and progress between fetch completion and classification start.
+    - [ ] 3. Update live candidate/pending counts and last-refreshed/job summary metadata.
+    - [ ] 4. Add Stop classification while preserving completed classifications.
+    - [ ] 5. Add profile switching and Settings controls for display and volume preferences.
+    - [ ] 6. Update automated tests for the selected UI/UX improvements.
+
+- [ ] TASK-024: Add category-scoped feed filtering
+  - Priority: High
+  - Acceptance criteria:
+    - Catalog entries accept one optional `category`.
+    - Feeds mapped to disabled categories are not fetched and their items are excluded from digest, candidate/pending counts, and classification.
+    - Re-enabling the category restores the feed.
+    - Unknown catalog categories fail seeding with a clear error.
+    - Existing feed rows receive category mappings on startup without restoring deleted feeds.
+    - Unit tests pass and `ruff check .` is clean.
+  - Tags: #backend #seed #ui #tests
   - Assignee: @unassigned
   - Role: @dev
   - Dependencies: None
-  - Notes: Targets the Containerization criterion; keep the loopback-only default.
+  - Subtasks:
+    - [ ] 1. Add optional `category` entries and single-topic mappings in `profiles/catalog.yaml`.
+    - [ ] 2. Add nullable `feeds.category`, schema v3 migration, and seed validation/backfill.
+    - [ ] 3. Exclude category-disabled feeds from fetching and refresh job totals.
+    - [ ] 4. Exclude their items from digest, candidate counts, pending counts, and classification.
+    - [ ] 5. Update source UI to count fetchable feeds and show category-disabled state.
+    - [ ] 6. Add regression tests and run unit tests plus ruff.
+  - Notes: Use one category per feed; keep broad/mixed feeds uncategorized; docs remain deferred.
 
 ## Open questions
 
@@ -325,3 +404,6 @@
 - [2026-10-25 20:15 UTC] @owner: Completed and verified TASK-013 - TASK-015.
 - [2026-11-01 13:13 UTC] @owner: Completed and verified TASK-016 - TASK-017.
 - [2026-11-08 09:18 UTC] @owner: Completed and verified TASK-018, added TASK-019 - TASK-021.
+- [2026-11-08 12:49 UTC] @owner: Completed and verified TASK-019 - TASK-020.
+- [2026-11-10 09:05 UTC] @owner: Marked TASK-021 complete after manual Docker Compose verification.
+- [2026-11-11 15:21 UTC] @owner: Added TASK-022 - TASK-024 for UI/UX planning, selected UI/UX improvements, and category-scoped feed filtering.
