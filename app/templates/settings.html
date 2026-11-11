@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Settings · Feed Filter{% endblock %}
+
+{% block content %}
+  <section class="page-head" aria-labelledby="settings-title">
+    <div>
+      <p class="eyebrow">Preferences</p>
+      <h1 id="settings-title">Settings</h1>
+      <p class="meta-line">Control refresh volume and how the digest displays classifications.</p>
+    </div>
+  </section>
+
+  <form
+    class="panel settings-form"
+    method="post"
+    action="{{ request.url_for('update_settings') }}"
+    aria-labelledby="settings-title"
+  >
+    {% if saved %}
+      <p class="notice" role="status">Settings saved.</p>
+    {% endif %}
+    {% if error %}
+      <p class="job-error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <fieldset>
+      <legend>Refresh and digest window</legend>
+      <div class="field">
+        <label for="window_hours">Digest window (hours)</label>
+        <input
+          id="window_hours"
+          name="window_hours"
+          type="number"
+          min="1"
+          step="1"
+          value="{{ window_hours }}"
+          required
+        >
+        <p class="fine-print">
+          Environment default: {{ default_window_hours }}. Item retention expands automatically when the window is wider.
+        </p>
+      </div>
+      <div class="field">
+        <label for="max_items_per_feed">Max items per source</label>
+        <input
+          id="max_items_per_feed"
+          name="max_items_per_feed"
+          type="number"
+          min="1"
+          step="1"
+          value="{{ max_items_per_feed }}"
+          required
+        >
+        <p class="fine-print">
+          Environment default: {{ default_max_items_per_feed }}. Keeps only the newest items per source in the window.
+        </p>
+      </div>
+      <div class="field">
+        <label for="max_new_items">Max new items per refresh</label>
+        <input
+          id="max_new_items"
+          name="max_new_items"
+          type="number"
+          min="1"
+          step="1"
+          value="{{ max_new_items }}"
+          required
+        >
+        <p class="fine-print">
+          Environment default: {{ default_max_new_items }}. Saving this page overrides it until changed here.
+        </p>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Digest display</legend>
+      <label class="checkbox">
+        <input
+          type="checkbox"
+          name="hide_low_confidence"
+          {% if preferences.hide_low_confidence %}checked{% endif %}
+        >
+        Hide the low-confidence section
+      </label>
+      <label class="checkbox">
+        <input
+          type="checkbox"
+          name="hide_reason_text"
+          {% if preferences.hide_reason_text %}checked{% endif %}
+        >
+        Hide match explanations
+      </label>
+    </fieldset>
+
+    <div class="form-actions">
+      <button class="button" type="submit">Save settings</button>
+    </div>
+  </form>
+{% endblock %}

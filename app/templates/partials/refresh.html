@@ -1,0 +1,43 @@
+{% set active = job and job.status in ["queued", "running", "preview"] %}
+{% set profile_id = profile.id if profile is defined and profile else job.profile_id %}
+{% if active %}
+  {% set progress = job.progress %}
+  <button
+    class="button button-progress"
+    type="button"
+    disabled
+    aria-label="{{ progress.label }}, {{ progress.percent }}% complete"
+  >
+    <span class="button-progress-fill" style="width: {{ progress.percent }}%"></span>
+    <span class="button-label">{{ progress.label }}</span>
+  </button>
+{% else %}
+  <div class="refresh-actions">
+    <form
+      method="post"
+      action="{{ request.url_for('start_refresh', profile_id=profile_id) }}"
+      hx-post="{{ request.url_for('start_refresh', profile_id=profile_id) }}"
+      hx-target="#job-panel"
+      hx-swap="outerHTML"
+    >
+      <button class="button" type="submit">Refresh</button>
+    </form>
+    {% if pending_items is defined and pending_items > 0 %}
+      <form
+        method="post"
+        action="{{ request.url_for('start_classify', profile_id=profile_id) }}"
+        hx-post="{{ request.url_for('start_classify', profile_id=profile_id) }}"
+        hx-target="#job-panel"
+        hx-swap="outerHTML"
+      >
+        <button class="button button-secondary" type="submit">
+          {% if max_new_items is defined and pending_items > max_new_items %}
+            Classify {{ max_new_items }} of {{ pending_items }}
+          {% else %}
+            Classify {{ pending_items }} pending
+          {% endif %}
+        </button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}

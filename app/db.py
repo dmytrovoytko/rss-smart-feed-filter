@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
@@ -33,6 +33,17 @@ def open_db(db_path: str | Path) -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def _ensure_jobs_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        str(row["name"])
+        for row in conn.execute("PRAGMA table_info(jobs)").fetchall()
+    }
+    if "mode" not in columns:
+        conn.execute("ALTER TABLE jobs ADD COLUMN mode TEXT NOT NULL DEFAULT 'refresh'")
+    if "phase" not in columns:
+        conn.execute("ALTER TABLE jobs ADD COLUMN phase TEXT")
+
+
 def init_db(db_path: str | Path) -> None:
     with open_db(db_path) as conn:
         version = int(conn.execute("PRAGMA user_version").fetchone()[0])
@@ -43,5 +54,7 @@ def init_db(db_path: str | Path) -> None:
             )
         if version < SCHEMA_VERSION:
             conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+            if version >= 1:
+                _ensure_jobs_columns(conn)
             conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             conn.commit()

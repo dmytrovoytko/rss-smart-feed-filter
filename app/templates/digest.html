@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ profile.name }} digest · Feed Filter{% endblock %}
+{% block title %}{{ profile.name }} digest · Smart Feed Filter{% endblock %}
 
 {% block content %}
   {% set enabled_feed_count = feeds|selectattr("enabled")|list|length %}
@@ -10,8 +10,8 @@
       <h1 id="digest-title">{{ profile.name }} digest</h1>
       <p class="meta-line">
         Last {{ digest.window_hours }} hours
-        <span aria-hidden="true">·</span>
-        Threshold {{ "%.2f"|format(digest.threshold) }}
+        <!-- <span aria-hidden="true">·</span>
+        Threshold {{ "%.2f"|format(digest.threshold) }} -->
         <span aria-hidden="true">·</span>
         {% if enabled_feed_count == feeds|length %}
           {{ feeds|length }} source{% if feeds|length != 1 %}s{% endif %}
@@ -19,29 +19,21 @@
           {{ enabled_feed_count }} of {{ feeds|length }} sources enabled
         {% endif %}
         <span aria-hidden="true">·</span>
-        {{ digest.window_items }} item{% if digest.window_items != 1 %}s{% endif %} in window
+        <span id="digest-candidate-count">{{ digest.window_items }} candidate item{% if digest.window_items != 1 %}s{% endif %} in window</span>
         {% if digest.classified_items %}
           <span aria-hidden="true">·</span>
           {{ digest.classified_items }} classified
         {% endif %}
+        <span aria-hidden="true">·</span>
+        Last refreshed {{ last_refreshed_at|human_time }}
       </p>
     </div>
 
     <div class="head-actions">
-      {% if job and job.status in ["queued", "running", "preview"] %}
-        <button class="button" type="button" disabled>Refreshing</button>
-      {% else %}
-        <form
-          method="post"
-          action="{{ request.url_for('start_refresh', profile_id=profile.id) }}"
-          hx-post="{{ request.url_for('start_refresh', profile_id=profile.id) }}"
-          hx-target="#job-panel"
-          hx-swap="outerHTML"
-        >
-          <button class="button" type="submit">Refresh</button>
-        </form>
-      {% endif %}
-      <p class="fine-print">Fetches enabled sources and classifies up to {{ settings.max_new_items }} new items per refresh.</p>
+      <div id="refresh-control">
+        {% include "partials/refresh.html" %}
+      </div>
+      <p class="fine-print">Refresh fetches enabled sources, keeps the newest {{ max_items_per_feed }} items per source, and classifies up to {{ max_new_items }} candidates. Classify pending skips fetching.</p>
     </div>
   </section>
 
@@ -53,7 +45,11 @@
 
   {% if digest.pending_items and digest.classified_items %}
     <p class="notice" role="status">
-      Refresh again to classify {{ digest.pending_items }} remaining item{% if digest.pending_items != 1 %}s{% endif %} in this window.
+      {% if digest.pending_items > max_new_items %}
+        {{ digest.pending_items }} candidate items are pending in this window. Use Classify pending to process up to {{ max_new_items }} without fetching sources.
+      {% else %}
+        {{ digest.pending_items }} candidate item{% if digest.pending_items != 1 %}s{% endif %} pending in this window. Use Classify pending to process them without fetching sources.
+      {% endif %}
     </p>
   {% endif %}
 
@@ -92,7 +88,9 @@
                 <span aria-hidden="true">·</span>
                 {{ item.effective_at|human_time }}
               </p>
-              <!-- <p class="digest-reason">{{ item.reason }}</p> -->
+              {% if not digest.hide_reason_text %}
+                <p class="digest-reason">{{ item.reason }}</p>
+              {% endif %}
 
               {% if item.tags|length != 1 %}
               <!-- <ul class="tag-list" aria-label="Matched categories"> -->
@@ -134,9 +132,11 @@
                 <span aria-hidden="true">·</span>
                 {{ item.effective_at|human_time }}
               </p>
-              <p class="digest-reason">
-                Best match: {{ item.best_category }} (p={{ "%.2f"|format(item.probability) }})
-              </p>
+              {% if not digest.hide_reason_text %}
+                <p class="digest-reason">
+                  Best match: {{ item.best_category }} (p={{ "%.2f"|format(item.probability) }})
+                </p>
+              {% endif %}
             </div>
             <span class="probability probability-low" title="Best match probability">p={{ "%.2f"|format(item.probability) }}</span>
           </li>
@@ -158,7 +158,7 @@
           <p>Refresh to fetch more items from your sources.</p>
         {% elif digest.classified_items == 0 %}
           <h2 id="empty-title">{{ digest.window_items }} item{% if digest.window_items != 1 %}s{% endif %} waiting to be classified</h2>
-          <p>Refresh to classify up to {{ settings.max_new_items }} items with <code>{{ settings.tev_model }}</code>.</p>
+          <p>Use Classify pending to process up to {{ max_new_items }} items with <code>{{ settings.tev_model }}</code>.</p>
         {% elif digest.hide_low_confidence and digest.low_confidence_count %}
           <h2 id="empty-title">No categorized items</h2>
           <p>Low-confidence items are hidden in settings.</p>

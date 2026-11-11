@@ -11,6 +11,12 @@ from typing import Any
 import requests
 
 from app.config import Settings
+from app.services.candidates import RANKED_CANDIDATES_CTE, window_bounds
+from app.services.preferences import (
+    get_max_items_per_feed,
+    get_max_new_items,
+    get_window_hours,
+)
 from app.timeutil import to_utc_iso
 
 log = logging.getLogger(__name__)
@@ -22,6 +28,7 @@ DEFAULT_TIMEOUT = 120.0
 DEFAULT_RETRIES = 2
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 ProgressCallback = Callable[[int, int], None]
+StopCheck = Callable[[], bool]
 
 
 class ClassificationError(RuntimeError):
@@ -238,14 +245,17 @@ def count_pending_items(
     conn: sqlite3.Connection,
     profile_id: str,
     model: str,
+    *,
+    window_start: str,
+    window_end: str,
+    max_items_per_feed: int,
 ) -> int:
     row = conn.execute(
-        """
+        RANKED_CANDIDATES_CTE
+        + """
         SELECT COUNT(*)
-        FROM items i
-        JOIN feeds f ON f.id = i.feed_id
-        WHERE f.profile_id = ?
-          AND f.enabled = 1
+        FROM ranked_items i
+        WHERE i.feed_rank <= ?
           AND EXISTS (
               SELECT 1
               FROM categories c
@@ -263,7 +273,14 @@ def count_pending_items(
                 )
           )
         """,
-        (profile_id, profile_id, model),
+        (
+            profile_id,
+            window_start,
+            window_end,
+            max_items_per_feed,
+            profile_id,
+            model,
+        ),
     ).fetchone()
     return int(row[0])
 
@@ -291,18 +308,21 @@ def _select_pending_items(
     profile_id: str,
     model: str,
     limit: int,
+    *,
+    window_start: str,
+    window_end: str,
+    max_items_per_feed: int,
 ) -> list[dict[str, Any]]:
     if limit <= 0:
         return []
     return [
         dict(row)
         for row in conn.execute(
-            """
+            RANKED_CANDIDATES_CTE
+            + """
             SELECT i.id, i.title, i.summary, i.published_at, i.fetched_at
-            FROM items i
-            JOIN feeds f ON f.id = i.feed_id
-            WHERE f.profile_id = ?
-              AND f.enabled = 1
+            FROM ranked_items i
+            WHERE i.feed_rank <= ?
               AND EXISTS (
                   SELECT 1
                   FROM categories c
@@ -322,7 +342,15 @@ def _select_pending_items(
             ORDER BY COALESCE(i.published_at, i.fetched_at) DESC, i.id DESC
             LIMIT ?
             """,
-            (profile_id, profile_id, model, limit),
+            (
+                profile_id,
+                window_start,
+                window_end,
+                max_items_per_feed,
+                profile_id,
+                model,
+                limit,
+            ),
         )
     ]
 
@@ -362,12 +390,16 @@ def classify_pending_items(
     client: Any | None = None,
     limit: int | None = None,
     on_progress: ProgressCallback | None = None,
+    should_stop: StopCheck | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     now = now or datetime.now(UTC)
     created_at = to_utc_iso(now)
     model = settings.tev_model
+    window_hours = get_window_hours(conn, settings.window_hours)
+    max_items_per_feed = get_max_items_per_feed(conn, settings.max_items_per_feed)
+    window_start, window_end = window_bounds(now, window_hours)
     categories = _load_enabled_categories(conn, profile_id)
     if len(categories) > MAX_QUESTIONS:
         raise ClassificationError(
@@ -375,26 +407,51 @@ def classify_pending_items(
             f"the model supports at most {MAX_QUESTIONS}."
         )
 
-    pending_before = count_pending_items(conn, profile_id, model)
-    effective_limit = settings.max_new_items if limit is None else max(0, limit)
-    items = _select_pending_items(conn, profile_id, model, effective_limit)
+    pending_before = count_pending_items(
+        conn,
+        profile_id,
+        model,
+        window_start=window_start,
+        window_end=window_end,
+        max_items_per_feed=max_items_per_feed,
+    )
+    effective_limit = (
+        get_max_new_items(conn, settings.max_new_items)
+        if limit is None
+        else max(0, limit)
+    )
+    items = _select_pending_items(
+        conn,
+        profile_id,
+        model,
+        effective_limit,
+        window_start=window_start,
+        window_end=window_end,
+        max_items_per_feed=max_items_per_feed,
+    )
     total = len(items)
     summary: dict[str, Any] = {
         "model": model,
         "categories": len(categories),
+        "window_hours": window_hours,
+        "max_items_per_feed": max_items_per_feed,
         "pending_before": pending_before,
         "selected_items": total,
         "classified_items": 0,
         "classified_categories": 0,
         "pending_items": pending_before,
+        "pending_after": pending_before,
         "unprocessed_items": max(0, pending_before - total),
         "requests": 0,
+        "stopped": False,
         "duration_s": 0.0,
     }
 
     if on_progress:
         on_progress(0, total)
-    if total == 0:
+    stopped = bool(should_stop and should_stop())
+    if stopped or total == 0:
+        summary["stopped"] = stopped
         summary["duration_s"] = round(time.perf_counter() - started, 3)
         return summary
 
@@ -410,6 +467,9 @@ def classify_pending_items(
             preflight()
 
         for index, item in enumerate(items, 1):
+            if should_stop and should_stop():
+                stopped = True
+                break
             missing = _missing_categories(
                 conn,
                 int(item["id"]),
@@ -457,17 +517,27 @@ def classify_pending_items(
             )
             conn.commit()
 
-        remaining = count_pending_items(conn, profile_id, model)
+        remaining = count_pending_items(
+            conn,
+            profile_id,
+            model,
+            window_start=window_start,
+            window_end=window_end,
+            max_items_per_feed=max_items_per_feed,
+        )
         summary.update(
             classified_items=classified_items,
             classified_categories=len(rows),
             pending_items=remaining,
+            pending_after=remaining,
             unprocessed_items=remaining,
             requests=requests_made,
+            stopped=stopped,
         )
         summary["duration_s"] = round(time.perf_counter() - started, 3)
         log.info(
-            "classification complete: profile=%s model=%s items=%s scores=%s pending=%s",
+            "classification %s: profile=%s model=%s items=%s scores=%s pending=%s",
+            "stopped" if stopped else "complete",
             profile_id,
             model,
             classified_items,

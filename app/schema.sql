@@ -102,8 +102,10 @@ CREATE INDEX IF NOT EXISTS idx_classifications_profile_category
 CREATE TABLE IF NOT EXISTS jobs (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     kind         TEXT NOT NULL CHECK (kind IN ('refresh', 'rescore')),
+    mode         TEXT NOT NULL DEFAULT 'refresh',
     profile_id   TEXT NOT NULL,
     status       TEXT NOT NULL CHECK (status IN ('queued', 'running', 'preview', 'done', 'failed')),
+    phase        TEXT,
     processed    INTEGER NOT NULL DEFAULT 0,
     total        INTEGER NOT NULL DEFAULT 0,
     error        TEXT,

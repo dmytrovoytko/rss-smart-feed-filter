@@ -68,6 +68,8 @@ class Settings:
     host: str
     port: int
     max_new_items: int
+    max_items_per_feed: int
+    refresh_overlap_hours: int
     retention_days: int
     window_hours: int
     rescore_days: int
@@ -86,6 +88,8 @@ class Settings:
             host=_env_str("HOST", "127.0.0.1"),
             port=_env_int("PORT", 8000),
             max_new_items=_env_int("MAX_NEW_ITEMS", 50),
+            max_items_per_feed=_env_int("MAX_ITEMS_PER_FEED", 10),
+            refresh_overlap_hours=_env_int("REFRESH_OVERLAP_HOURS", 6),
             retention_days=_env_int("RETENTION_DAYS", 30),
             window_hours=_env_int("WINDOW_HOURS", 72),
             rescore_days=_env_int("RESCORE_DAYS", 14),
@@ -102,6 +106,10 @@ class Settings:
             raise ValueError("PORT must be between 1 and 65535")
         if self.max_new_items < 1:
             raise ValueError("MAX_NEW_ITEMS must be at least 1")
+        if self.max_items_per_feed < 1:
+            raise ValueError("MAX_ITEMS_PER_FEED must be at least 1")
+        if self.refresh_overlap_hours < 0:
+            raise ValueError("REFRESH_OVERLAP_HOURS must be zero or greater")
         if self.retention_days < 1:
             raise ValueError("RETENTION_DAYS must be at least 1")
         if self.window_hours < 1:
@@ -110,6 +118,10 @@ class Settings:
             raise ValueError("RESCORE_DAYS must be at least 1")
         if not 0.0 <= self.threshold <= 1.0:
             raise ValueError("THRESHOLD must be between 0.0 and 1.0")
+
+
+def effective_item_retention_days(retention_days: int, window_hours: int) -> int:
+    return max(retention_days, (window_hours + 23) // 24 + 1)
 
 
 @lru_cache(maxsize=1)

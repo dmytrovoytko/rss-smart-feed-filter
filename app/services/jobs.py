@@ -19,10 +19,13 @@ log = logging.getLogger(__name__)
 
 ACTIVE_STATUSES = ("queued", "running", "preview")
 JOB_STATUSES = {"queued", "running", "preview", "done", "failed"}
+JOB_MODES = {"refresh", "classify"}
+FETCH_PROGRESS_SHARE = 20
 
-ProgressCallback = Callable[[int, int], None]
+ProgressCallback = Callable[[str, int, int], None]
+StopCheck = Callable[[], bool]
 JobHandler = Callable[
-    [sqlite3.Connection, Settings, int, str, ProgressCallback],
+    [sqlite3.Connection, Settings, int, str, ProgressCallback, StopCheck],
     dict[str, Any] | None,
 ]
 
@@ -33,6 +36,61 @@ class JobNotFound(RuntimeError):
 
 class JobConflict(RuntimeError):
     pass
+
+
+def job_progress(job: dict[str, Any]) -> dict[str, Any]:
+    status = str(job.get("status") or "")
+    mode = str(job.get("mode") or "refresh")
+    phase = job.get("phase")
+    processed = int(job.get("processed") or 0)
+    total = int(job.get("total") or 0)
+
+    if status == "done":
+        return {"percent": 100, "label": "Done", "detail": "Complete"}
+    if status == "failed":
+        return {"percent": 0, "label": "Failed", "detail": "Stopped"}
+    if status == "queued" or not phase:
+        return {"percent": 0, "label": "Queued", "detail": "Waiting to start"}
+
+    if phase == "fetching":
+        if total:
+            percent = round(FETCH_PROGRESS_SHARE * processed / total)
+            detail = (
+                f"{processed} of {total} source"
+                f"{'s' if total != 1 else ''} checked"
+            )
+            label = f"Fetching {processed}/{total}"
+        else:
+            percent = 0
+            detail = "Fetching sources"
+            label = "Fetching sources"
+    elif phase == "classifying":
+        if total:
+            if mode == "classify":
+                percent = round(100 * processed / total)
+            else:
+                percent = FETCH_PROGRESS_SHARE + round(
+                    (100 - FETCH_PROGRESS_SHARE) * processed / total
+                )
+            detail = (
+                f"{processed} of {total} item"
+                f"{'s' if total != 1 else ''} classified"
+            )
+            label = f"Classifying {processed}/{total}"
+        else:
+            percent = 99 if mode == "classify" else FETCH_PROGRESS_SHARE
+            detail = "Classifying items"
+            label = "Classifying"
+    else:
+        percent = 0
+        detail = "Working"
+        label = "Working"
+
+    return {
+        "percent": max(0, min(99, int(percent))),
+        "label": label,
+        "detail": detail,
+    }
 
 
 def _job_from_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
@@ -46,6 +104,7 @@ def _job_from_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
             job["result"] = json.loads(result_json)
         except (TypeError, ValueError):
             job["result"] = None
+    job["progress"] = job_progress(job)
     return job
 
 
@@ -89,22 +148,27 @@ def create_job(
     *,
     kind: str,
     profile_id: str,
+    mode: str = "refresh",
     total: int = 0,
 ) -> int:
+    if mode not in JOB_MODES:
+        raise ValueError(f"invalid job mode: {mode}")
     now = utc_now_iso()
     cursor = conn.execute(
         """
-        INSERT INTO jobs (kind, profile_id, status, processed, total, created_at, updated_at)
-        VALUES (?, ?, 'queued', 0, ?, ?, ?)
+        INSERT INTO jobs (
+            kind, mode, profile_id, status, processed, total, created_at, updated_at
+        )
+        VALUES (?, ?, ?, 'queued', 0, ?, ?, ?)
         """,
-        (kind, profile_id, max(0, total), now, now),
+        (kind, mode, profile_id, max(0, total), now, now),
     )
     conn.commit()
     return int(cursor.lastrowid)
 
 
 def update_job(conn: sqlite3.Connection, job_id: int, **fields: Any) -> None:
-    allowed = {"status", "processed", "total", "error", "result_json"}
+    allowed = {"status", "phase", "processed", "total", "error", "result_json"}
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:
         return
@@ -123,15 +187,48 @@ def _job_error_message(exc: BaseException) -> str:
     return (message or exc.__class__.__name__)[:1000]
 
 
+def _classification_fields(classification: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "classification": classification,
+        "classified_items": classification["classified_items"],
+        "classified_categories": classification["classified_categories"],
+        "pending_items": classification["pending_items"],
+        "pending_after": classification.get(
+            "pending_after",
+            classification["pending_items"],
+        ),
+        "unprocessed_items": classification["unprocessed_items"],
+        "window_hours": classification.get("window_hours"),
+        "max_items_per_feed": classification.get("max_items_per_feed"),
+        "classification_model": classification["model"],
+        "classification_duration_s": classification["duration_s"],
+        "stopped": bool(classification.get("stopped", False)),
+    }
+
+
+def _profile_items_total(conn: sqlite3.Connection, profile_id: str) -> int:
+    return int(
+        conn.execute(
+            """
+            SELECT COUNT(*) FROM items i
+            JOIN feeds f ON f.id = i.feed_id
+            WHERE f.profile_id = ?
+            """,
+            (profile_id,),
+        ).fetchone()[0]
+    )
+
+
 def run_refresh_job(
     conn: sqlite3.Connection,
     settings: Settings,
     job_id: int,
     profile_id: str,
     progress: ProgressCallback,
+    should_stop: StopCheck,
 ) -> dict[str, Any]:
     def fetch_progress(processed: int, total: int) -> None:
-        progress(processed, total)
+        progress("fetching", processed, total)
 
     result = refresh_profile(
         conn,
@@ -139,24 +236,60 @@ def run_refresh_job(
         profile_id,
         on_progress=fetch_progress,
     )
-    feeds_total = int(result.get("feeds_total", 0))
+    result["mode"] = "refresh"
+    update_job(
+        conn,
+        job_id,
+        phase="classifying",
+        processed=0,
+        total=0,
+        result_json=json.dumps(result, sort_keys=True),
+    )
+    conn.commit()
 
     def classify_progress(processed: int, total: int) -> None:
-        progress(feeds_total + processed, feeds_total + total)
+        progress("classifying", processed, total)
 
     classification = classify_pending_items(
         conn,
         settings,
         profile_id,
         on_progress=classify_progress,
+        should_stop=should_stop,
     )
-    result["classification"] = classification
-    result["classified_items"] = classification["classified_items"]
-    result["classified_categories"] = classification["classified_categories"]
-    result["pending_items"] = classification["pending_items"]
-    result["unprocessed_items"] = classification["unprocessed_items"]
-    result["classification_model"] = classification["model"]
-    result["classification_duration_s"] = classification["duration_s"]
+    fields = _classification_fields(classification)
+    for key in ("window_hours", "max_items_per_feed"):
+        if fields.get(key) is None and key in result:
+            fields[key] = result[key]
+    result.update(fields)
+    return result
+
+
+def run_classify_job(
+    conn: sqlite3.Connection,
+    settings: Settings,
+    job_id: int,
+    profile_id: str,
+    progress: ProgressCallback,
+    should_stop: StopCheck,
+) -> dict[str, Any]:
+    def classify_progress(processed: int, total: int) -> None:
+        progress("classifying", processed, total)
+
+    classification = classify_pending_items(
+        conn,
+        settings,
+        profile_id,
+        on_progress=classify_progress,
+        should_stop=should_stop,
+    )
+    result = {
+        "mode": "classify",
+        "errors": [],
+        "items_total": _profile_items_total(conn, profile_id),
+        "duration_s": classification["duration_s"],
+    }
+    result.update(_classification_fields(classification))
     return result
 
 
@@ -166,14 +299,17 @@ class JobRunner:
         settings: Settings,
         *,
         refresh_handler: JobHandler | None = None,
+        classify_handler: JobHandler | None = None,
     ) -> None:
         self.settings = settings
         self._handlers: dict[str, JobHandler] = {
             "refresh": refresh_handler or run_refresh_job,
         }
+        self._classify_handler = classify_handler or run_classify_job
         self._queue: queue.Queue[int | None] = queue.Queue()
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        self._stop_events: dict[int, threading.Event] = {}
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
@@ -190,6 +326,9 @@ class JobRunner:
             self._thread.start()
 
     def stop(self) -> None:
+        with self._lock:
+            for event in self._stop_events.values():
+                event.set()
         self._stop.set()
         self._queue.put(None)
         thread = self._thread
@@ -197,41 +336,66 @@ class JobRunner:
             thread.join(timeout=10)
         self._thread = None
 
-    def enqueue_refresh(self, profile_id: str) -> tuple[int, bool]:
+    def request_stop(self, job_id: int) -> bool:
+        with self._lock:
+            event = self._stop_events.get(job_id)
+            if event is None:
+                return False
+            event.set()
+            return True
+
+    def is_stop_requested(self, job_id: int) -> bool:
+        with self._lock:
+            event = self._stop_events.get(job_id)
+            return bool(event and event.is_set())
+
+    def _enqueue(self, profile_id: str, mode: str) -> tuple[int, bool]:
         with self._lock:
             with open_db(self.settings.db_path) as conn:
                 existing = active_job(conn)
                 if existing is not None:
                     return int(existing["id"]), False
-                total = int(
-                    conn.execute(
-                        """
-                        SELECT COUNT(*) FROM feeds
-                        WHERE profile_id = ? AND enabled = 1
-                        """,
-                        (profile_id,),
-                    ).fetchone()[0]
-                )
+                total = 0
+                if mode == "refresh":
+                    total = int(
+                        conn.execute(
+                            """
+                            SELECT COUNT(*) FROM feeds
+                            WHERE profile_id = ? AND enabled = 1
+                            """,
+                            (profile_id,),
+                        ).fetchone()[0]
+                    )
                 job_id = create_job(
                     conn,
                     kind="refresh",
                     profile_id=profile_id,
+                    mode=mode,
                     total=total,
                 )
             self._queue.put(job_id)
             return job_id, True
 
+    def enqueue_refresh(self, profile_id: str) -> tuple[int, bool]:
+        return self._enqueue(profile_id, "refresh")
+
+    def enqueue_classify(self, profile_id: str) -> tuple[int, bool]:
+        return self._enqueue(profile_id, "classify")
+
     def enqueue_retry(self, job_id: int) -> tuple[int, bool]:
         with open_db(self.settings.db_path) as conn:
             job = conn.execute(
-                "SELECT id, profile_id, status FROM jobs WHERE id = ?",
+                "SELECT id, profile_id, status, mode FROM jobs WHERE id = ?",
                 (job_id,),
             ).fetchone()
         if job is None:
             raise JobNotFound(f"unknown job: {job_id}")
         if job["status"] != "failed":
             raise JobConflict("only failed jobs can be retried")
-        return self.enqueue_refresh(str(job["profile_id"]))
+        mode = str(job["mode"] or "refresh")
+        if mode not in JOB_MODES:
+            mode = "refresh"
+        return self._enqueue(str(job["profile_id"]), mode)
 
     def _recover_interrupted(self) -> None:
         now = utc_now_iso()
@@ -261,9 +425,19 @@ class JobRunner:
                 self._queue.task_done()
 
     def _run_job(self, job_id: int) -> None:
+        stop_event = threading.Event()
+        with self._lock:
+            self._stop_events[job_id] = stop_event
+        try:
+            self._execute_job(job_id, stop_event)
+        finally:
+            with self._lock:
+                self._stop_events.pop(job_id, None)
+
+    def _execute_job(self, job_id: int, stop_event: threading.Event) -> None:
         with open_db(self.settings.db_path) as conn:
             row = conn.execute(
-                "SELECT id, kind, profile_id, status FROM jobs WHERE id = ?",
+                "SELECT id, kind, mode, profile_id, status FROM jobs WHERE id = ?",
                 (job_id,),
             ).fetchone()
             if row is None:
@@ -275,8 +449,13 @@ class JobRunner:
                 return
 
             kind = str(row["kind"])
+            mode = str(row["mode"] or "refresh")
             profile_id = str(row["profile_id"])
-            handler = self._handlers.get(kind)
+            handler = (
+                self._classify_handler
+                if mode == "classify"
+                else self._handlers.get(kind)
+            )
             if handler is None:
                 update_job(
                     conn,
@@ -291,19 +470,39 @@ class JobRunner:
                 conn,
                 job_id,
                 status="running",
+                phase=None,
                 processed=0,
                 error=None,
                 result_json=None,
             )
             conn.commit()
-            log.info("job %s started: kind=%s profile=%s", job_id, kind, profile_id)
+            log.info(
+                "job %s started: kind=%s mode=%s profile=%s",
+                job_id,
+                kind,
+                mode,
+                profile_id,
+            )
 
-            def progress(processed: int, total: int) -> None:
-                update_job(conn, job_id, processed=processed, total=total)
+            def progress(phase: str, processed: int, total: int) -> None:
+                update_job(
+                    conn,
+                    job_id,
+                    phase=phase,
+                    processed=processed,
+                    total=total,
+                )
                 conn.commit()
 
             try:
-                result = handler(conn, self.settings, job_id, profile_id, progress)
+                result = handler(
+                    conn,
+                    self.settings,
+                    job_id,
+                    profile_id,
+                    progress,
+                    stop_event.is_set,
+                )
             except Exception as exc:
                 conn.rollback()
                 message = _job_error_message(exc)

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>{% block title %}Feed Filter{% endblock %}</title>
+  <title>{% block title %}Smart Feed Filter{% endblock %}</title>
   <link rel="stylesheet" href="{{ request.url_for('static', path='app.css') }}">
   <script src="{{ request.url_for('static', path='htmx.min.js') }}" defer></script>
 </head>
@@ -14,16 +14,28 @@
   <header class="site-header">
     <div class="shell header-inner">
       <a class="brand" href="{{ request.url_for('index') }}">
-        <span class="brand-mark" aria-hidden="true">FF</span>
-        <span>Feed Filter</span>
+        <span class="brand-mark" aria-hidden="true">SFF</span>
+        <span>Smart Feed Filter</span>
       </a>
 
       <div class="header-meta">
-        {% if profile is defined and profile %}
+        {% if profiles is defined and profiles %}
+          <nav class="profile-switcher" aria-label="Switch profile">
+            {% for item in profiles %}
+              <form method="post" action="{{ request.url_for('activate_profile', profile_id=item.id) }}">
+                <button
+                  class="profile-option{% if item.id == active_profile_id %} is-active{% endif %}"
+                  type="submit"
+                  {% if item.id == active_profile_id %}aria-current="page"{% endif %}
+                >{{ item.name }}</button>
+              </form>
+            {% endfor %}
+          </nav>
+        {% elif profile is defined and profile %}
           <span class="profile-pill">{{ profile.name }}</span>
         {% endif %}
-        <nav aria-label="Primary">
-          <a href="{{ request.url_for('index') }}">Digest</a>
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="{{ request.url_for('settings_page') }}">Settings</a>
         </nav>
       </div>
     </div>

@@ -19,13 +19,14 @@ import feedparser
 import requests
 from dateutil import parser as date_parser
 
-from app.config import Settings
+from app.config import Settings, effective_item_retention_days
+from app.services.candidates import count_window_items, window_bounds
 from app.services.classify import count_pending_items
+from app.services.preferences import get_max_items_per_feed, get_window_hours
 from app.timeutil import parse_iso, to_utc_iso
 
 log = logging.getLogger(__name__)
 
-BACKFILL_DAYS = 7
 MAX_FEED_BYTES = 5 * 1024 * 1024
 MAX_REDIRECTS = 5
 MAX_SUMMARY_CHARS = 700
@@ -84,6 +85,7 @@ class IngestStats:
     updated: int = 0
     duplicates: int = 0
     skipped_old: int = 0
+    capped: int = 0
 
 
 class _TextExtractor(HTMLParser):
@@ -488,15 +490,26 @@ def ingest_entries(
     *,
     fetched_at: str,
     cutoff: datetime,
+    max_entries: int | None = None,
 ) -> IngestStats:
     stats = IngestStats()
     fetched_dt = parse_iso(fetched_at) or datetime.now(UTC)
+    ordered = sorted(
+        entries,
+        key=lambda entry: parse_iso(entry.published_at) or fetched_dt,
+        reverse=True,
+    )
+    processed = 0
 
-    for entry in entries:
+    for entry in ordered:
         effective = parse_iso(entry.published_at) or fetched_dt
         if effective < cutoff:
             stats.skipped_old += 1
             continue
+        if max_entries is not None and processed >= max_entries:
+            stats.capped += 1
+            continue
+        processed += 1
 
         existing = _find_existing_item(conn, feed_id, entry)
         if existing is None:
@@ -559,17 +572,25 @@ def ingest_entries(
 def apply_retention(
     conn: sqlite3.Connection,
     settings: Settings,
+    *,
+    window_hours: int | None = None,
     now: datetime | None = None,
 ) -> dict[str, int]:
     now = now or datetime.now(UTC)
-    cutoff = to_utc_iso(now - timedelta(days=settings.retention_days))
+    window_hours = settings.window_hours if window_hours is None else window_hours
+    item_retention_days = effective_item_retention_days(
+        settings.retention_days,
+        window_hours,
+    )
+    item_cutoff = to_utc_iso(now - timedelta(days=item_retention_days))
+    job_cutoff = to_utc_iso(now - timedelta(days=settings.retention_days))
     items_deleted = conn.execute(
         "DELETE FROM items WHERE COALESCE(published_at, fetched_at) < ?",
-        (cutoff,),
+        (item_cutoff,),
     ).rowcount
     jobs_deleted = conn.execute(
         "DELETE FROM jobs WHERE created_at < ?",
-        (cutoff,),
+        (job_cutoff,),
     ).rowcount
     return {
         "items_deleted": max(0, items_deleted),
@@ -608,6 +629,12 @@ def refresh_profile(
     owns_fetcher = fetcher is None
     active_fetcher = fetcher or FeedFetcher()
     total = len(feeds)
+    window_hours = get_window_hours(conn, settings.window_hours)
+    max_items_per_feed = get_max_items_per_feed(conn, settings.max_items_per_feed)
+    item_retention_days = effective_item_retention_days(
+        settings.retention_days,
+        window_hours,
+    )
 
     summary: dict[str, Any] = {
         "feeds_total": total,
@@ -618,6 +645,9 @@ def refresh_profile(
         "updated_items": 0,
         "duplicate_entries": 0,
         "skipped_old": 0,
+        "capped_entries": 0,
+        "window_hours": window_hours,
+        "max_items_per_feed": max_items_per_feed,
         "errors": [],
         "fetched_at": fetched_at,
     }
@@ -627,9 +657,14 @@ def refresh_profile(
             on_progress(0, total)
         for index, feed in enumerate(feeds, 1):
             last_status = str(feed["last_status"] or "").lower()
-            first_success = feed["last_fetched_at"] is None or "error" in last_status
-            backfill_days = BACKFILL_DAYS if first_success else settings.retention_days
-            cutoff = now - timedelta(days=backfill_days)
+            last_fetched = parse_iso(feed["last_fetched_at"])
+            if last_fetched is not None and "error" not in last_status:
+                cutoff = max(
+                    last_fetched - timedelta(hours=settings.refresh_overlap_hours),
+                    now - timedelta(days=item_retention_days),
+                )
+            else:
+                cutoff = now - timedelta(hours=window_hours)
 
             try:
                 result = active_fetcher(feed)
@@ -691,11 +726,13 @@ def refresh_profile(
                 parsed.entries,
                 fetched_at=fetched_at,
                 cutoff=cutoff,
+                max_entries=max_items_per_feed,
             )
             summary["new_items"] += stats.new
             summary["updated_items"] += stats.updated
             summary["duplicate_entries"] += stats.duplicates
             summary["skipped_old"] += stats.skipped_old
+            summary["capped_entries"] += stats.capped
             summary["feeds_ok"] += 1
 
             if stats.new or stats.updated:
@@ -713,10 +750,28 @@ def refresh_profile(
             if on_progress:
                 on_progress(index, total)
 
-        summary["retention"] = apply_retention(conn, settings, now)
+        summary["retention"] = apply_retention(
+            conn,
+            settings,
+            window_hours=window_hours,
+            now=now,
+        )
         conn.commit()
+        window_start, window_end = window_bounds(now, window_hours)
+        summary["window_items"] = count_window_items(
+            conn,
+            profile_id,
+            window_start,
+            window_end,
+            max_items_per_feed,
+        )
         summary["pending_items"] = count_pending_items(
-            conn, profile_id, settings.tev_model
+            conn,
+            profile_id,
+            settings.tev_model,
+            window_start=window_start,
+            window_end=window_end,
+            max_items_per_feed=max_items_per_feed,
         )
         summary["items_total"] = int(
             conn.execute(

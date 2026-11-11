@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from app.config import Settings
+from app.services.candidates import (
+    RANKED_CANDIDATES_CTE,
+    count_window_items,
+    window_bounds,
+)
+from app.services.preferences import get_max_items_per_feed, get_window_hours
 from app.timeutil import parse_iso, to_utc_iso
 
 MIN_RECENCY = 0.25
@@ -45,37 +51,18 @@ def _load_categories(
     ]
 
 
-def _window_item_count(
-    conn: sqlite3.Connection,
-    profile_id: str,
-    window_start: str,
-    window_end: str,
-) -> int:
-    row = conn.execute(
-        """
-        SELECT COUNT(*)
-        FROM items i
-        JOIN feeds f ON f.id = i.feed_id
-        WHERE f.profile_id = ?
-          AND f.enabled = 1
-          AND COALESCE(i.published_at, i.fetched_at) >= ?
-          AND COALESCE(i.published_at, i.fetched_at) <= ?
-        """,
-        (profile_id, window_start, window_end),
-    ).fetchone()
-    return int(row[0])
-
-
 def _classified_rows(
     conn: sqlite3.Connection,
     profile_id: str,
     model: str,
     window_start: str,
     window_end: str,
+    max_items_per_feed: int,
 ) -> list[sqlite3.Row]:
     return list(
         conn.execute(
-            """
+            RANKED_CANDIDATES_CTE
+            + """
             SELECT i.id AS item_id,
                    i.title,
                    i.canonical_url,
@@ -93,18 +80,24 @@ def _classified_rows(
               ON c.profile_id = cl.profile_id
              AND c.id = cl.category_id
              AND c.version_hash = cl.category_version
-            JOIN items i ON i.id = cl.item_id
+            JOIN ranked_items i ON i.id = cl.item_id
             JOIN feeds f ON f.id = i.feed_id
             WHERE cl.profile_id = ?
               AND cl.model = ?
               AND c.enabled = 1
               AND f.enabled = 1
               AND cl.created_at >= i.fetched_at
-              AND COALESCE(i.published_at, i.fetched_at) >= ?
-              AND COALESCE(i.published_at, i.fetched_at) <= ?
+              AND i.feed_rank <= ?
             ORDER BY c.position, cl.probability DESC, i.id
             """,
-            (profile_id, model, window_start, window_end),
+            (
+                profile_id,
+                window_start,
+                window_end,
+                profile_id,
+                model,
+                max_items_per_feed,
+            ),
         )
     )
 
@@ -121,9 +114,13 @@ def build_digest(
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
     now = now.astimezone(UTC)
-    window_hours = settings.window_hours if window_hours is None else max(1, window_hours)
-    window_start = to_utc_iso(now - timedelta(hours=window_hours))
-    window_end = to_utc_iso(now)
+    window_hours = (
+        get_window_hours(conn, settings.window_hours)
+        if window_hours is None
+        else max(1, window_hours)
+    )
+    max_items_per_feed = get_max_items_per_feed(conn, settings.max_items_per_feed)
+    window_start, window_end = window_bounds(now, window_hours)
 
     profile_row = conn.execute(
         "SELECT id, name, kind, threshold FROM profiles WHERE id = ?",
@@ -136,13 +133,21 @@ def build_digest(
 
     categories = _load_categories(conn, profile_id)
     hide_low_confidence = _setting_bool(conn, "hide_low_confidence")
-    window_items = _window_item_count(conn, profile_id, window_start, window_end)
+    hide_reason_text = _setting_bool(conn, "hide_reason_text")
+    window_items = count_window_items(
+        conn,
+        profile_id,
+        window_start,
+        window_end,
+        max_items_per_feed,
+    )
     rows = _classified_rows(
         conn,
         profile_id,
         settings.tev_model,
         window_start,
         window_end,
+        max_items_per_feed,
     )
 
     grouped: dict[int, dict[str, Any]] = {}
@@ -276,8 +281,10 @@ def build_digest(
         "low_confidence": low_confidence,
         "low_confidence_count": low_confidence_count,
         "hide_low_confidence": hide_low_confidence,
+        "hide_reason_text": hide_reason_text,
         "threshold": threshold,
         "window_hours": window_hours,
+        "max_items_per_feed": max_items_per_feed,
         "window_start": window_start,
         "window_end": window_end,
         "window_items": window_items,

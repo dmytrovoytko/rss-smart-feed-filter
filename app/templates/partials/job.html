@@ -1,5 +1,9 @@
 {% set active = job.status in ["queued", "running", "preview"] %}
 {% set result = job.result %}
+{% set progress = job.progress %}
+{% set classification_job = job.mode == "classify" %}
+{% set stop_requested = stop_requested if stop_requested is defined else false %}
+{% set stopped = result and result.stopped is defined and result.stopped %}
 <div
   id="job-panel"
   class="job-panel status-{{ job.status }}"
@@ -15,90 +19,172 @@
 
   <div class="job-head">
     <div>
-      <p class="eyebrow">Refresh job #{{ job.id }}</p>
+      <p class="eyebrow">
+        {% if classification_job %}Classification job{% else %}Refresh job{% endif %} #{{ job.id }}
+      </p>
       <h2>
         {% if job.status == "queued" %}
           Queued
-        {% elif job.status == "running" %}
-          Refreshing and classifying
         {% elif job.status == "preview" %}
           Building preview
+        {% elif job.status == "running" %}
+          {% if job.phase == "fetching" %}
+            Fetching sources
+          {% elif job.phase == "classifying" %}
+            Classifying items
+          {% elif classification_job %}
+            Classifying items
+          {% else %}
+            Working
+          {% endif %}
         {% elif job.status == "done" %}
-          Refresh complete
+          {% if stopped %}
+            {% if classification_job %}Classification stopped{% else %}Refresh stopped{% endif %}
+          {% elif classification_job %}
+            Classification complete
+          {% else %}
+            Refresh complete
+          {% endif %}
         {% else %}
-          Refresh failed
+          {% if classification_job %}Classification failed{% else %}Refresh failed{% endif %}
         {% endif %}
       </h2>
     </div>
-    <span class="job-status job-status-{{ job.status }}">{{ job.status }}</span>
+    <span class="job-status job-status-{{ job.status }}">
+      {% if stopped %}stopped{% elif active and job.phase %}{{ job.phase }}{% else %}{{ job.status }}{% endif %}
+    </span>
   </div>
 
   {% if active %}
-    {% set pct = ((100 * job.processed / job.total)|round(0, "floor")|int) if job.total else 0 %}
-    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ job.total or 0 }}" aria-valuenow="{{ job.processed }}" aria-label="Refresh progress">
-      <span class="progress-bar" style="width: {{ pct }}%"></span>
+    <div
+      class="progress"
+      role="progressbar"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow="{{ progress.percent }}"
+      aria-label="{{ progress.label }}"
+    >
+      <span class="progress-bar" style="width: {{ progress.percent }}%"></span>
     </div>
     <p class="job-meta">
-      {{ job.processed }} of {{ job.total }} step{% if job.total != 1 %}s{% endif %} complete
+      {% if not classification_job and job.phase == "classifying" and result and result.window_items is defined %}
+        Fetched <strong>{{ result.new_items }}</strong> new item{% if result.new_items != 1 %}s{% endif %}
+        {% if result.updated_items %}
+          <span aria-hidden="true">·</span>
+          <strong>{{ result.updated_items }}</strong> updated
+        {% endif %}
+        <span aria-hidden="true">·</span>
+        <strong>{{ result.window_items }}</strong> candidate item{% if result.window_items != 1 %}s{% endif %} in window
+        {% if result.feeds_failed %}
+          <span aria-hidden="true">·</span>
+          <span class="text-error">{{ result.feeds_failed }} source{% if result.feeds_failed != 1 %}s{% endif %} failed</span>
+        {% endif %}
+        <span aria-hidden="true">·</span>
+      {% endif %}
+      {{ progress.detail }}
+      <span aria-hidden="true">·</span>
+      {{ progress.percent }}%
       <span aria-hidden="true">·</span>
       updated {{ job.updated_at|human_time }}
     </p>
-    <p class="fine-print">This page updates automatically. You can keep working while the refresh runs.</p>
+    {% if job.phase == "classifying" %}
+      {% if stop_requested %}
+        <p class="notice" role="status">Stopping after current item...</p>
+      {% else %}
+        <form
+          class="job-actions"
+          method="post"
+          action="{{ request.url_for('stop_job', job_id=job.id) }}"
+          hx-post="{{ request.url_for('stop_job', job_id=job.id) }}"
+          hx-target="#job-panel"
+          hx-swap="outerHTML"
+        >
+          <button class="button button-secondary" type="submit">Stop classification</button>
+        </form>
+      {% endif %}
+    {% endif %}
+    <p class="fine-print">This page updates automatically. You can keep working while the job runs.</p>
   {% elif job.status == "done" %}
     {% if result %}
-      <p class="job-meta">
-        <strong>{{ result.new_items }}</strong> new item{% if result.new_items != 1 %}s{% endif %}
-        <span aria-hidden="true">·</span>
-        <strong>{{ result.updated_items }}</strong> updated
-        <span aria-hidden="true">·</span>
-        {{ result.feeds_ok + result.feeds_not_modified }} of {{ result.feeds_total }} source{% if result.feeds_total != 1 %}s{% endif %} succeeded
-        {% if result.feeds_not_modified %}
+      {% set pending_after = result.pending_after if result.pending_after is defined else result.pending_items %}
+      {% if classification_job %}
+        <p class="job-meta">
+          <strong>{{ result.classified_items }}</strong> item{% if result.classified_items != 1 %}s{% endif %} classified
           <span aria-hidden="true">·</span>
-          {{ result.feeds_not_modified }} not modified
-        {% endif %}
-        {% if result.feeds_failed %}
+          {{ result.classified_categories }} category score{% if result.classified_categories != 1 %}s{% endif %}
           <span aria-hidden="true">·</span>
-          <span class="text-error">{{ result.feeds_failed }} failed</span>
+          {{ pending_after }} pending in window
+          <span aria-hidden="true">·</span>
+          {{ result.items_total }} stored total
+          <span aria-hidden="true">·</span>
+          {{ result.duration_s }}s
+        </p>
+      {% else %}
+        <p class="job-meta">
+          <strong>{{ result.new_items }}</strong> new item{% if result.new_items != 1 %}s{% endif %} stored
+          <span aria-hidden="true">·</span>
+          <strong>{{ result.updated_items }}</strong> updated
+          <span aria-hidden="true">·</span>
+          {{ result.feeds_ok + result.feeds_not_modified }} of {{ result.feeds_total }} source{% if result.feeds_total != 1 %}s{% endif %} succeeded
+          {% if result.feeds_not_modified %}
+            <span aria-hidden="true">·</span>
+            {{ result.feeds_not_modified }} not modified
+          {% endif %}
+          {% if result.feeds_failed %}
+            <span aria-hidden="true">·</span>
+            <span class="text-error">{{ result.feeds_failed }} failed</span>
+          {% endif %}
+        </p>
+        <p class="fine-print">
+          {% if result.classified_items is defined %}
+            {{ result.classified_items }} item{% if result.classified_items != 1 %}s{% endif %} classified
+            ({{ result.classified_categories }} category score{% if result.classified_categories != 1 %}s{% endif %})
+            <span aria-hidden="true">·</span>
+          {% endif %}
+          {{ pending_after }} candidate item{% if pending_after != 1 %}s{% endif %} pending in window
+          <span aria-hidden="true">·</span>
+          {{ result.items_total }} stored total
+          <span aria-hidden="true">·</span>
+          {{ result.duration_s }}s
+          {% if result.retention and (result.retention.items_deleted or result.retention.jobs_deleted) %}
+            <span aria-hidden="true">·</span>
+            retention removed {{ result.retention.items_deleted }} item{% if result.retention.items_deleted != 1 %}s{% endif %}
+            and {{ result.retention.jobs_deleted }} job{% if result.retention.jobs_deleted != 1 %}s{% endif %}
+          {% endif %}
+        </p>
+        {% if result.errors %}
+          <details class="error-details">
+            <summary>Source errors ({{ result.errors|length }})</summary>
+            <ul>
+              {% for error in result.errors %}
+                <li><strong>{{ error.title }}</strong>: {{ error.error }}</li>
+              {% endfor %}
+            </ul>
+          </details>
         {% endif %}
-      </p>
-      {% if result.unprocessed_items %}
+      {% endif %}
+      {% if stopped %}
         <p class="notice" role="status">
-          {{ result.unprocessed_items }} unprocessed; refresh again.
+          Classification stopped after {{ result.classified_items }} item{% if result.classified_items != 1 %}s{% endif %}.
+        </p>
+      {% endif %}
+      {% if pending_after %}
+        <p class="notice" role="status">
+          {{ pending_after }} candidate item{% if pending_after != 1 %}s{% endif %} still pending in this window. Use Classify pending to process more without fetching sources.
         </p>
       {% endif %}
       <p class="fine-print">
-        {% if result.classified_items is defined %}
-          {{ result.classified_items }} item{% if result.classified_items != 1 %}s{% endif %} classified
-          ({{ result.classified_categories }} category score{% if result.classified_categories != 1 %}s{% endif %})
-          <span aria-hidden="true">·</span>
-        {% endif %}
-        {{ result.pending_items }} item{% if result.pending_items != 1 %}s{% endif %} pending classification
-        <span aria-hidden="true">·</span>
-        {{ result.items_total }} stored total
-        <span aria-hidden="true">·</span>
-        {{ result.duration_s }}s
-        {% if result.retention and (result.retention.items_deleted or result.retention.jobs_deleted) %}
-          <span aria-hidden="true">·</span>
-          retention removed {{ result.retention.items_deleted }} item{% if result.retention.items_deleted != 1 %}s{% endif %}
-          and {{ result.retention.jobs_deleted }} job{% if result.retention.jobs_deleted != 1 %}s{% endif %}
+        {% if stopped %}
+          The digest reflects classifications completed before the stop.
+        {% else %}
+          The digest reflects the latest classifications.
         {% endif %}
       </p>
-      {% if result.errors %}
-        <details class="error-details">
-          <summary>Source errors ({{ result.errors|length }})</summary>
-          <ul>
-            {% for error in result.errors %}
-              <li><strong>{{ error.title }}</strong>: {{ error.error }}</li>
-            {% endfor %}
-          </ul>
-        </details>
-      {% endif %}
-      <p class="fine-print">The digest reflects the classifications from this refresh.</p>
     {% else %}
       <p class="job-meta">The job finished without a result payload.</p>
     {% endif %}
   {% else %}
-    <p class="job-error" role="alert">{{ job.error or "The refresh failed without an error message." }}</p>
+    <p class="job-error" role="alert">{{ job.error or "The job failed without an error message." }}</p>
     <form
       method="post"
       action="{{ request.url_for('retry_job', job_id=job.id) }}"
@@ -106,7 +192,17 @@
       hx-target="#job-panel"
       hx-swap="outerHTML"
     >
-      <button class="button button-secondary" type="submit">Retry refresh</button>
+      <button class="button button-secondary" type="submit">
+        {% if classification_job %}Retry classification{% else %}Retry refresh{% endif %}
+      </button>
     </form>
   {% endif %}
 </div>
+{% if oob_refresh_control %}
+  <div id="refresh-control" hx-swap-oob="true">
+    {% include "partials/refresh.html" %}
+  </div>
+{% endif %}
+{% if oob_candidate_count and active and job.mode == "refresh" and job.phase == "classifying" and result and result.window_items is defined %}
+  <span id="digest-candidate-count" hx-swap-oob="true">{{ result.window_items }} candidate item{% if result.window_items != 1 %}s{% endif %} in window</span>
+{% endif %}

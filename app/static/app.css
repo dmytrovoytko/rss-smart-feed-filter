@@ -134,6 +134,8 @@ code {
 .header-meta {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
@@ -146,6 +148,49 @@ code {
 
 .header-meta nav a:hover {
   color: var(--text);
+}
+
+.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.profile-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  padding: 0.18rem;
+}
+
+.profile-switcher form {
+  margin: 0;
+}
+
+.profile-option {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.24rem 0.65rem;
+}
+
+.profile-option:hover {
+  color: var(--text);
+}
+
+.profile-option.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(18, 30, 23, 0.08);
 }
 
 .profile-pill {
@@ -209,6 +254,17 @@ h2 {
   text-align: right;
 }
 
+.refresh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.refresh-actions form {
+  margin: 0;
+}
+
 .button {
   appearance: none;
   border: 1px solid transparent;
@@ -228,6 +284,31 @@ h2 {
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.button-progress {
+  position: relative;
+  overflow: hidden;
+  min-width: 10rem;
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.button-progress:disabled {
+  cursor: progress;
+  opacity: 1;
+}
+
+.button-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  transition: width 220ms ease;
+}
+
+.button-label {
+  position: relative;
 }
 
 .fine-print {
@@ -383,6 +464,61 @@ h2 {
   margin: 0;
 }
 
+.settings-form fieldset {
+  border: 0;
+  margin: 0 0 1.6rem;
+  padding: 0;
+}
+
+.settings-form legend {
+  margin-bottom: 0.8rem;
+  padding: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 22rem;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+}
+
+.field .fine-print {
+  max-width: none;
+  margin-top: 0.1rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-bottom: 0.65rem;
+}
+
+.checkbox input {
+  margin-top: 0.25rem;
+}
+
+.form-actions {
+  border-top: 1px solid var(--border);
+  padding-top: 1.1rem;
+}
+
 .button-secondary {
   background: var(--surface);
   border-color: var(--border);
@@ -474,6 +610,10 @@ h2 {
   margin: 0.65rem 0 0;
   color: var(--text);
   font-size: 0.92rem;
+}
+
+.job-actions {
+  margin: 0.85rem 0 0;
 }
 
 .job-panel .fine-print {
@@ -630,10 +770,15 @@ td:first-child {
   .panel {
     padding: 1.1rem;
   }
+
+  .refresh-actions {
+    justify-content: flex-start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .progress-bar {
+  .progress-bar,
+  .button-progress-fill {
     transition: none;
   }
 }
@@ -722,7 +867,7 @@ td:first-child {
 .probability {
   flex: none;
   align-self: flex-start;
-  border: 1px solid var(--accent);
+  /*border: 1px solid var(--accent);*/
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-strong);
