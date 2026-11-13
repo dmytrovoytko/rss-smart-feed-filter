@@ -98,6 +98,8 @@ feed-filter
 
 Then open <http://127.0.0.1:8000> and press **Refresh** to build the first digest. On first run the app creates the SQLite database under `data/` and seeds both `ds.v1` and `fun.v1` profiles with their feed catalogs.
 
+The header switches between profiles. The **Settings** page controls the max new items per refresh, hides the low-confidence section, and hides match explanations.
+
 ## Docker Compose
 
 The full stack also runs with Docker Compose, including Ollama. Compose reads `.env`, so create it first:
@@ -131,7 +133,7 @@ Settings come from the environment or a local `.env` file; `.env.example` lists 
 | `LOG_LEVEL` | `INFO` | Log verbosity |
 | `HOST` | `127.0.0.1` | Bind address |
 | `PORT` | `8000` | HTTP port |
-| `MAX_NEW_ITEMS` | `50` | Items classified per refresh |
+| `MAX_NEW_ITEMS` | `50` | Environment default; the Settings page can override it |
 | `RETENTION_DAYS` | `30` | Item retention |
 | `WINDOW_HOURS` | `72` | Digest window |
 | `RESCORE_DAYS` | `14` | Retroactive re-score window |
@@ -146,7 +148,7 @@ python -m unittest discover -s tests -v
 ruff check .
 ```
 
-The integration tests exercise the digest, refresh, job fragment, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
+The integration tests exercise the digest, settings, profile switching, refresh, job fragment, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
 
 GitHub Actions runs lint and the full test suite on every push and pull request via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
