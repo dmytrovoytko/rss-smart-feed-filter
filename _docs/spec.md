@@ -1,9 +1,9 @@
 # Smart Feed Filter — Product Requirements Document (Implementation Baseline)
 
-**Status:** v0.3.0, MVP  
-**Date:** 2026-11-11  
-**Working name:** Smart Feed Filter  
-**Scope:** v0.3.0, MVP, local single-user web app  
+**Status:** v0.4.0, MVP
+**Date:** 2026-11-14
+**Working name:** Smart Feed Filter
+**Scope:** v0.4.0, MVP, local single-user web app
 **Decision model:** `tev1:0.8b` via Ollama (original evaluation gate not met; accepted for the MVP)  
 **Delivery:** local Python install or Docker Compose
 
@@ -11,9 +11,11 @@
 
 ## 0. Summary
 
-Smart Feed Filter turns public RSS feeds into a short, category-grouped digest for one person. The user runs the app locally, seeds one of two profiles, and presses **Refresh**. The app fetches enabled public feeds, dedupes and stores new items, asks a local Ollama decision model to score each item against enabled categories, and renders the last 72 hours grouped by category and ranked inside each section.
+Smart Feed Filter turns public RSS feeds into a short, category-grouped digest for one person. The user runs the app locally, seeds one of two profiles, and presses **Refresh**. The app fetches enabled public feeds, dedupes and stores new items, asks a local Ollama decision model to score each item against enabled categories, and renders the configured digest window (72 hours by default) grouped by category and ranked inside each section.
 
 The product is a filtering engine, not a summarizer. It does not fetch article bodies, connect to private accounts, or generate prose. Everything runs locally against a SQLite database and a local Ollama instance.
+
+The digest also supports lightweight processing: archive or dismiss an item, reject a specific category match, and inspect a deterministic feedback log. These actions stay local and do not call the model.
 
 This version describes the implemented MVP. Planned editing and management surfaces are explicitly deferred in §5.7.
 
@@ -34,6 +36,7 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 **Jobs to be done:**
 - When I have 15 minutes to catch up, help me find the few items that match my current work and hobbies, and ignore the rest.
 - When a match appears, show me the category and match probability so I can trust or dismiss it.
+- When a match is wrong, let me correct that category decision and keep a record of the correction.
 - When a feed or the model fails, show me the problem and let me retry without losing my digest.
 - As a local-first user, I want no account, no telemetry, and no private-service access.
 
@@ -41,6 +44,7 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 1. As a data scientist, I want ML, LLM, analytics, and data-engineering items grouped separately so I can skim by intent.
 2. As an off-work reader, I want hobby items without work, politics, or health noise.
 3. As a local-first user, I want to install with pip or run the stack with Docker Compose, with no account or telemetry.
+4. As a reader, I want to archive, dismiss, or correct mismatches so my digest reflects my judgment without editing profile YAML.
 
 **Deferred user stories:**
 - As a tinkerer, I want to add a category from scratch and see what it matches.
@@ -60,16 +64,17 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 - Reproducible local checks (`ruff`, `unittest`) and a GitHub Actions CI workflow.
 - Optional one-command local stack with Docker Compose, including Ollama.
 
-**Non-goals for v0.3.0 MVP **
+**Non-goals for v0.4.0 MVP **
 - No category editor, preview/apply flow, or retroactive re-score UI.
 - No feed add/remove/toggle UI; the seeded catalog is read-only in the UI.
-- Settings are limited to display preferences and the max-new-items override; no weight or threshold editing.
+- Settings are limited to digest volume and display preferences; no weight or threshold editing.
 - The profile switcher is implemented.
 - No email, calendar, social, or private-service integrations.
 - No full-text article fetching, paywall bypass, or content rehosting.
 - No accounts, multi-user support, cloud sync, or telemetry.
 - No scheduler, push notifications, or background polling.
-- No read/unread, save, or dismiss state; the digest is stateless.
+- No read/unread tracking. Archive, dismiss, and category feedback are explicit processing actions, not read state.
+- No undoing a dismiss or browsing dismissed items.
 - No job-search profile kind.
 - No generated summaries or free-text model output; reasons are templated.
 - No medical, health, or mental-health advice.
@@ -96,15 +101,17 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 | Threshold | Per profile; `ds.v1` 0.62, `fun.v1` 0.55; default 0.55 |
 | Low confidence | Collapsed section; `hide_low_confidence` DB setting overridable in UI Settings |
 | Display preferences | `hide_reason_text` DB setting overridable in UI Settings |
-| Digest window | 72 hours |
-| Initial backfill | 7 days on first successful fetch; later fetches use retention window |
+| Digest window | 72 hours by default; overridable in UI Settings |
+| Fetch lookback | First successful fetch uses `WINDOW_HOURS`; later fetches use `REFRESH_OVERLAP_HOURS` behind the last non-error fetch, clipped by item retention |
 | Refresh | Manual only; in-process job runner; at most one active job globally |
-| New item cap | `MAX_NEW_ITEMS` environment default, overridable in UI Settings |
+| Per-source item cap | `MAX_ITEMS_PER_FEED` environment default (10), overridable in UI Settings |
+| New item cap | `MAX_NEW_ITEMS` environment default (50), overridable in UI Settings |
 | Cache | Category-level, keyed by item, profile, category version, and model |
 | Dedupe | Canonical URL or normalized title within the same feed |
-| Retention | 30 days for items and jobs |
+| Retention | Items use effective retention (`RETENTION_DAYS`, expanded for wider windows); jobs use `RETENTION_DAYS`; archive and feedback snapshots survive |
 | Errors | Persisted job error plus manual retry; previous digest remains |
-| Read state | None; digest is stateless |
+| Processing | Per-item Archive, Dismiss, and Recategorize; feedback log with JSONL export |
+| Read state | None; archive/dismiss/feedback are explicit processing actions |
 | Access | Host bind on 127.0.0.1; container publishes loopback-only ports |
 | Testing | `unittest` service tests plus FastAPI `TestClient` route tests |
 | CI | GitHub Actions on push/PR: `ruff` + `unittest`; no container validation |
@@ -117,26 +124,41 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 
 ### 5.1 First run
 
-1. Create the SQLite database and apply schema version 1.
+1. Create the SQLite database and apply the current schema version (4).
 2. Load the seeded feed catalog and the two profile presets from `profiles/*.yaml`.
 3. Set `ds.v1` as the active profile; both profiles start with their seeded feeds.
-4. Seed display settings: `hide_low_confidence=0`, `hide_reason_text=0`.
+4. Seed display settings: `hide_low_confidence=0`, `hide_reason_text=0`. Volume preferences fall back to environment defaults until saved in Settings.
 5. Show an empty digest state: "No items in this window / Refresh to fetch more items from your sources."
-6. On refresh, backfill 7 days, dedupe, classify up to the configured new-item cap (default 50), and render the digest.
+6. On refresh, fetch from the configured window on the first successful fetch (later fetches use `REFRESH_OVERLAP_HOURS` behind the last non-error fetch, clipped by item retention), dedupe, classify up to the configured per-source and new-item caps, and render the digest.
 
 ### 5.2 Digest
 
-- Window: items published in the last 72 hours; fall back to `fetched_at` when a feed has no date.
+- Window: items published inside the configured digest window (default 72 hours); fall back to `fetched_at` when a feed has no date.
 - Grouping: one section per enabled category that has at least one match.
 - Sections are rendered as expanded `<details>` elements by default.
 - Within a section: ranked by probability × weight × recency decay.
 - Each item shows: title (links to the source), source, relative time, match probability, and any other matched category tags.
 - An item matching multiple categories appears in each relevant section. This is intentional; no cross-section dedupe.
-- The templated reason is computed in the digest payload but is not rendered for matched items in the current UI.
+- Matched items render the templated reason unless `hide_reason_text` is enabled.
 - A collapsed "Low confidence" section lists items with no category above threshold, ordered by highest probability. `hide_low_confidence` hides this section when enabled in the database.
-- A pending notice appears when some items in the window have not been classified.
+- A pending notice appears when some items in the window have not been classified, with a Classify pending action that processes them without fetching sources.
 - A sources panel lists seeded feeds with enabled state, last status, and last fetched time.
-- No read/unread, save, or dismiss controls.
+- Every matched and low-confidence entry has a Process menu for Archive, Dismiss, Recategorize, and Feedback.
+- No read/unread controls.
+
+### 5.2.1 Processing actions
+
+The Process menu is available on digest entries for the active profile. Actions apply immediately and refresh the digest without a model call.
+
+- **Archive** is item-level. It stores a denormalized snapshot (title, URL, source, summary, published/fetched timestamps, archive time) under `archived_items` so the item remains visible on the Archive page after normal item retention deletes the underlying row. Archived items are excluded from the digest, the low-confidence section, and candidate/pending counts.
+- **Remove from Archive** deletes the archive snapshot. If the underlying item still exists, it is converted to a dismissal so it does not reappear in the digest. If the item has already aged out, only the snapshot is removed.
+- **Dismiss** is item-level. Dismissed items are excluded from the digest, the low-confidence section, and candidate/pending counts. There is no undo and no processed view; dismissal rows are deleted with the item during retention.
+- **Recategorize** is pair-level. It records the rejected category's item, category, version, model, and probability snapshots plus an optional suggested profile category and an optional note (trimmed to 2,000 characters). Suggestions include disabled categories, labeled as disabled, but suggesting one never enables it. It hides only the rejected category match; the item stays visible in other category sections. No automatic category move is performed.
+- Recategorizing from the Low confidence section rejects the best category and hides that low-confidence entry.
+- **Feedback** opens the feedback log filtered to the item. The feedback page lists feedback for the profile, and `feedback.jsonl` exports the same rows deterministically (sorted keys, one JSON object per line, creation order). Feedback snapshots survive item retention and are not a second free-form mutation.
+- Archive and Dismiss refresh the digest results and their category, low-confidence, candidate, and classified counts in place without a full page reload.
+- Rejected category matches and archived/dismissed items are filtered in the shared candidate and digest queries, so counts stay consistent across pages.
+- Unknown profiles, items, or categories return 404. Item ownership is validated against the profile before any action.
 
 ### 5.3 Deferred: profile and category editing UI
 
@@ -145,6 +167,7 @@ The category editor, preview diff, atomic apply, and retroactive re-score flow a
 ### 5.4 Feeds
 
 - Feeds are loaded from `profiles/catalog.yaml` at seed time.
+- Catalog entries may map a feed to one optional profile category; feeds mapped to disabled categories are not fetched.
 - The sources panel is read-only: it shows title, enabled state, last status, and last fetched time.
 - No UI exists to add, remove, enable, or disable a feed.
 - Feed requests are validated against public HTTP(S) URLs and private/local networks before fetching.
@@ -152,10 +175,12 @@ The category editor, preview diff, atomic apply, and retroactive re-score flow a
 ### 5.5 Refresh and errors
 
 - Refresh runs as an in-process job with progress polling.
-- It fetches enabled feeds, parses, dedupes, stores new items, classifies up to the configured cap, and updates the digest.
-- If more than the cap are pending, process the newest items and show "N unprocessed; refresh again."
+- Refresh fetches enabled feeds, parses, dedupes, stores new items, classifies up to the configured cap, and updates the digest.
+- Classify pending skips fetching and classifies up to `MAX_NEW_ITEMS` pending items in the current window.
+- If more than the cap are pending, process up to the cap and show the remaining count with a Classify pending action.
+- A stop request is accepted only while a job is classifying. It stops classification gracefully, preserves completed classifications, and finishes with a stopped summary.
 - If Ollama is unreachable, the model is missing, or a request fails after retries, the job fails with an actionable error and a Retry button. The previous digest remains visible.
-- Retry is available only for failed jobs and re-runs the refresh job; it classifies only items without valid classifications for the current profile versions and model.
+- Retry is available only for failed jobs and re-enqueues the failed job's mode. A refresh retry fetches again and classifies only items without valid classifications; a classify retry only classifies pending items.
 - On server restart, queued/running/preview jobs are marked failed with `interrupted by server restart`.
 
 ### 5.6 Health
@@ -171,8 +196,13 @@ The category editor, preview diff, atomic apply, and retroactive re-score flow a
 | Category preview/apply/cancel UI | Deferred |
 | Retroactive re-score (`RESCORE_DAYS`) | Deferred; config only |
 | Feed add/remove/toggle UI | Deferred |
-| Settings page | Implemented for display preferences and max-new-items override |
+| Settings page | Implemented for digest window, per-source cap, new-item cap, and display preferences |
 | Profile switcher | Implemented in the header |
+| Archive / Dismiss / Recategorize | Implemented per item; see §5.2.1 |
+| Archive page and removal | Implemented; removal converts to dismissal while the item exists |
+| Feedback page and JSONL export | Implemented; snapshots survive retention |
+| Read/unread tracking | Deferred; processing actions are not read state |
+| Dismiss undo or dismissed-items view | Deferred by design |
 | Templated reason display | Implemented for matched and low-confidence items |
 | `hide_reason_text` behavior | Implemented; hides match explanations |
 | Docker/Compose validation in CI | Not planned |
@@ -182,7 +212,7 @@ The category editor, preview diff, atomic apply, and retroactive re-score flow a
 
 ## 6. Data model
 
-SQLite with WAL, foreign keys, `busy_timeout=5000`, and `synchronous=NORMAL`. Timestamps are UTC ISO-8601 text with milliseconds and a trailing `Z`. Schema version is stored in `PRAGMA user_version` and is currently `1`; `init_db` applies the schema when the version is lower and refuses a newer version.
+SQLite with WAL, foreign keys, `busy_timeout=5000`, and `synchronous=NORMAL`. Timestamps are UTC ISO-8601 text with milliseconds and a trailing `Z`. Schema version is stored in `PRAGMA user_version` and is currently `4`; `init_db` applies the schema when the version is lower and refuses a newer version. Schema v2 added job mode/phase, v3 added feed categories, and v4 added processing tables.
 
 ### `profiles`
 | Column | Type | Notes |
@@ -236,6 +266,7 @@ Immutable snapshots for cache identity and future rollback.
 | `url` | TEXT | unique per profile |
 | `title` | TEXT | |
 | `enabled` | INTEGER | |
+| `category` | TEXT | nullable catalog category mapping; disabled categories are not fetched |
 | `etag` | TEXT | conditional GET |
 | `last_modified` | TEXT | |
 | `last_fetched_at` | TEXT | |
@@ -271,13 +302,69 @@ Immutable snapshots for cache identity and future rollback.
 
 A classification is usable only when its `created_at` is at or after the item's `fetched_at`, its category version matches the current category, its model matches the configured model, and the category and feed are enabled. Threshold changes are applied at read time.
 
+### `archived_items`
+Denormalized item snapshot that survives item retention.
+
+| Column | Type | Notes |
+|---|---|---|
+| `profile_id` | TEXT | part of primary key |
+| `item_id` | INTEGER | part of primary key |
+| `title` | TEXT | snapshot |
+| `url` | TEXT | snapshot |
+| `source` | TEXT | snapshot |
+| `summary` | TEXT | snapshot, default empty |
+| `published_at` | TEXT | nullable snapshot |
+| `fetched_at` | TEXT | snapshot |
+| `archived_at` | TEXT | |
+| PRIMARY KEY | (`profile_id`, `item_id`) | |
+| FOREIGN KEY | `profile_id` → `profiles(id)` | `ON DELETE CASCADE` |
+
+An index on (`profile_id`, `archived_at DESC`, `item_id DESC`) supports the Archive page.
+
+### `dismissed_items`
+| Column | Type | Notes |
+|---|---|---|
+| `profile_id` | TEXT | part of primary key |
+| `item_id` | INTEGER | part of primary key |
+| `dismissed_at` | TEXT | |
+| PRIMARY KEY | (`profile_id`, `item_id`) | |
+| FOREIGN KEY | `profile_id` → `profiles(id)` | `ON DELETE CASCADE` |
+| FOREIGN KEY | `item_id` → `items(id)` | `ON DELETE CASCADE`; rows expire with items |
+
+An index on (`profile_id`, `dismissed_at DESC`, `item_id DESC`) supports maintenance and lookups.
+
+### `category_feedback`
+Immutable category-correction log. It intentionally has no item foreign key so snapshots survive item retention.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `profile_id` | TEXT | |
+| `item_id` | INTEGER | original item ID |
+| `item_title` | TEXT | snapshot |
+| `item_url` | TEXT | snapshot |
+| `item_source` | TEXT | snapshot |
+| `category_id` | TEXT | rejected category |
+| `category_name` | TEXT | snapshot |
+| `category_version` | TEXT | category version at rejection |
+| `model` | TEXT | model that produced the probability |
+| `probability` | REAL | probability at rejection |
+| `suggested_category_id` | TEXT | nullable |
+| `suggested_category_name` | TEXT | nullable |
+| `note` | TEXT | nullable, max 2,000 characters |
+| `created_at` | TEXT | |
+
+Indexes cover profile/creation order, profile/item order, and profile/item/category matching.
+
 ### `jobs`
 | Column | Type | Notes |
 |---|---|---|
 | `id` | INTEGER PK | |
 | `kind` | TEXT | `refresh` or `rescore`; `rescore` is reserved |
+| `mode` | TEXT | `refresh` or `classify` |
 | `profile_id` | TEXT | |
 | `status` | TEXT | queued, running, preview, done, failed |
+| `phase` | TEXT | nullable; `fetching` or `classifying` while running |
 | `processed` | INTEGER | |
 | `total` | INTEGER | |
 | `error` | TEXT | nullable |
@@ -289,7 +376,10 @@ A classification is usable only when its `created_at` is at or after the item's 
 Key/value store. Current keys:
 - `active_profile_id`
 - `hide_low_confidence`
-- `hide_reason_text` (reserved; no effect)
+- `hide_reason_text` (hides match explanations when enabled)
+- `max_new_items` (overrides the environment default when set)
+- `max_items_per_feed` (overrides the environment default when set)
+- `window_hours` (overrides the environment default when set)
 
 ---
 
@@ -356,14 +446,14 @@ Reasons are templated, never generated:
 Matched {category.name}: {category.reason_hint} (p={probability:.2f})
 ```
 
-The digest payload includes this string for matched items, but the current template does not render it for matched items. This display is deferred. Low-confidence items show "Best match: {category} (p=...)" in the UI.
+The digest renders this string for matched items and shows "Best match: {category} (p=...)" for low-confidence items. Both are hidden when `hide_reason_text` is enabled.
 
 ### 7.5 Failure behavior
 
 - If the model is unreachable, the model is not pulled, or a request fails after retries, the job fails.
 - The previous digest stays visible.
 - The job panel shows the error and a Retry button.
-- Retry is allowed only for failed jobs. The retry re-runs refresh and classification for the profile.
+- Retry is allowed only for failed jobs. The retry re-enqueues the failed job's mode: refresh retries fetch again and classify, while classify retries only classify pending items.
 - Classification rows are inserted at the end of a classification run, so a failed run does not write partial category scores.
 - Feed fetches may still have stored items and statuses before a later classification failure.
 
@@ -388,7 +478,7 @@ score   = probability × category.weight × recency
 ```
 
 - `age_hours` is measured from `published_at`, falling back to `fetched_at`.
-- Only items inside the 72-hour window are considered.
+- Only items inside the configured digest window (default 72 hours) are considered.
 - Sort descending inside each category section.
 - Use probability for display and score for ordering.
 
@@ -407,12 +497,16 @@ score   = probability × category.weight × recency
 - Collapsed by default.
 - Hidden entirely when `hide_low_confidence` is enabled in the database.
 - Items with no labels do not appear in category sections.
+- Archiving, dismissing, or recategorizing the best category removes the entry.
+- An item with any rejected category feedback is excluded from the low-confidence section.
 
 ### 8.4 Retention
 
-- Delete items older than 30 days (by `COALESCE(published_at, fetched_at)`) and their classifications during refresh.
-- Delete jobs older than 30 days.
-- No user-facing export.
+- Delete items older than the effective item retention (by `COALESCE(published_at, fetched_at)`) and their classifications during refresh. Effective retention is `max(RETENTION_DAYS, ceil(configured window hours / 24) + 1)` days.
+- Delete jobs older than `RETENTION_DAYS` (30 days by default).
+- Dismissals cascade-delete with items.
+- Archive snapshots and category feedback survive item retention.
+- Feedback is exportable as deterministic JSONL from the Feedback page route; there is no other user-facing export.
 
 ---
 
@@ -425,6 +519,7 @@ score   = probability × category.weight × recency
 - **Feed service:** `feedparser` for RSS/Atom, `requests` for conditional GETs, per-feed timeouts and error isolation.
 - **Classifier:** Ollama `/v1/systemone`, one request per item, sequential.
 - **Job runner:** one in-process worker thread plus a jobs table.
+- **Processing:** archive/dismiss/recategorize services plus a feedback log and deterministic JSONL export.
 - **Profiles:** YAML seeds under `profiles/`, imported into SQLite on first run.
 - **Eval:** standalone harness under `eval/`, not part of the web app.
 - **Containers:** `Dockerfile` and `docker-compose.yml` for app + Ollama.
@@ -455,11 +550,15 @@ app/
     feeds.py
     jobs.py
     preferences.py
+    processing.py
   static/
   templates/
+    archive.html
     base.html
     digest.html
+    feedback.html
     partials/job.html
+    partials/process_menu.html
 eval/
   items.jsonl
   harness.py
@@ -488,13 +587,22 @@ Implemented routes:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | Redirect to active profile digest |
-| GET | `/profiles/{id}/digest` | Digest with 72-hour sections |
+| GET | `/profiles/{id}/digest` | Digest for the configured window with Process menus |
 | POST | `/profiles/{id}/activate` | Persist the active profile and redirect to its digest |
+| POST | `/profiles/{id}/items/{item_id}/archive` | Archive an item |
+| POST | `/profiles/{id}/items/{item_id}/dismiss` | Dismiss an item |
+| POST | `/profiles/{id}/items/{item_id}/recategorize` | Reject a category match and record feedback |
+| GET | `/profiles/{id}/archive` | Archived items for the profile |
+| POST | `/profiles/{id}/archive/{item_id}/remove` | Remove an archive snapshot; convert to dismissal if the item exists |
+| GET | `/profiles/{id}/feedback` | Feedback log, optionally filtered by `item_id` |
+| GET | `/profiles/{id}/feedback.jsonl` | Deterministic JSONL feedback export |
 | POST | `/profiles/{id}/refresh` | Enqueue refresh job; redirect or return HTMX panel |
+| POST | `/profiles/{id}/classify` | Enqueue classification-only job; redirect or return HTMX panel |
 | GET | `/jobs/{id}` | Job progress fragment |
-| POST | `/jobs/{id}/retry` | Retry a failed job |
+| POST | `/jobs/{id}/stop` | Request a graceful stop for a classifying job |
+| POST | `/jobs/{id}/retry` | Retry a failed job in its original mode |
 | GET | `/settings` | Settings page |
-| POST | `/settings` | Update display preferences and max-new-items override |
+| POST | `/settings` | Update digest window, volume caps, and display preferences |
 | GET | `/healthz` | Health and table counts |
 | GET | `/favicon.ico` | Favicon |
 | GET | `/static/{path}` | CSS, HTMX, favicon |
@@ -513,8 +621,10 @@ Deferred routes: category editing, preview/apply, and feed manager.
 | `HOST` | `127.0.0.1` | Bind address |
 | `PORT` | `8000` | HTTP port |
 | `MAX_NEW_ITEMS` | `50` | Environment default; UI Settings can override it |
-| `RETENTION_DAYS` | `30` | Item and job retention |
-| `WINDOW_HOURS` | `72` | Digest window |
+| `MAX_ITEMS_PER_FEED` | `10` | Environment default; UI Settings can override it |
+| `REFRESH_OVERLAP_HOURS` | `6` | Overlap behind the last non-error fetch for later fetches |
+| `RETENTION_DAYS` | `30` | Job retention; item retention expands when the digest window is wider |
+| `WINDOW_HOURS` | `72` | Digest window; UI Settings can override it |
 | `RESCORE_DAYS` | `14` | Reserved; no rescore flow |
 | `THRESHOLD` | `0.55` | Default threshold for new profiles |
 | `PROFILES_DIR` | repository `profiles/` | Seed profile directory |
@@ -526,7 +636,7 @@ Docker Compose values:
 | `OLLAMA_BASE_URL_DOCKER` | `http://ollama:11434` | App-to-Ollama endpoint inside Compose |
 | `OLLAMA_PUBLISH_HOST` | `127.0.0.1` | Host interface for the published Ollama port |
 
-- Behavioral settings from `.env` are passed through: `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`.
+- Behavioral settings from `.env` are passed through: `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`.
 - App `HOST` is forced to `0.0.0.0` inside the container; the host port is published on `127.0.0.1`.
 - Default relative `DB_PATH`/`LOG_PATH` resolve under `/app` to `/app/data/...`; custom absolute paths require a matching volume mount.
 - The container uses `OLLAMA_BASE_URL_DOCKER` instead of the local `OLLAMA_BASE_URL`.
@@ -574,7 +684,7 @@ ruff check .
   - `ollama-pull`: one-shot pull of `TEV_MODEL`, runs after Ollama is healthy.
   - `app`: starts after Ollama is healthy and the model pull completes.
 - Compose requires `.env` for the app via `env_file`.
-- Compose passes `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, and `LOG_PATH` from `.env`.
+- Compose passes `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, and `LOG_PATH` from `.env`.
 - App `HOST` is forced to `0.0.0.0` inside the container; the app container uses `OLLAMA_BASE_URL_DOCKER`, which defaults to `http://ollama:11434`.
 - Host ports:
   - App: `127.0.0.1:${PORT:-8000}`
@@ -590,12 +700,12 @@ ruff check .
 - **Privacy:** no accounts, no private services, no telemetry. Feed content is public and stored only as title, summary, URL, and timestamps.
 - **Security:** escape all feed text in templates; strip HTML; allow only public HTTP(S) feed URLs and reject private/local address ranges and credentials; no script execution from feed content; container runs as non-root.
 - **Performance:** original target was 50 items under 3 minutes on an 8-core CPU. The recorded eval p95 is 10.55 s/item, so this target is not demonstrated for the prototype.
-- **Reliability:** feed errors are isolated; model errors fail the job explicitly; job state is persisted; digest reads are transactional.
+- **Reliability:** feed errors are isolated; model errors fail the job explicitly; job state is persisted; digest reads are transactional; processing actions validate profile/item ownership.
 - **Cost:** zero inference cost; local model only.
-- **Retention:** 30 days for items and jobs.
+- **Retention:** 30 days for items and jobs; archive and feedback snapshots survive item retention.
 - **Logging:** rotating local log (5 MB × 3 backups) plus stream handler; no full summaries logged by default.
 - **Accessibility:** skip link, semantic headings, keyboard-operable details/summary, visible focus, sufficient contrast.
-- **Testing:** unit/service tests for parsing, dedupe, ranking, cache keys, classification, and job runner; FastAPI `TestClient` route integration tests with a temporary SQLite database; no Ollama call in route tests.
+- **Testing:** unit/service tests for parsing, dedupe, ranking, cache keys, classification, processing filters, retention snapshots, and job runner; FastAPI `TestClient` route integration tests with a temporary SQLite database; no Ollama call in route tests.
 - **Delivery:** local Python install or Docker Compose; no cloud dependency.
 
 ---
@@ -662,8 +772,8 @@ Recorded `tev1:0.8b` result:
 | 1 | SQLite schema, seed catalog, feed fetch/parse | Done |
 | 2 | Classifier client, category cache, error state, retry | Done |
 | 3 | Category editor, preview diff, apply, 14-day re-score | Deferred |
-| 4 | Digest grouped by category, ranking, low-confidence section, reasons | Done; last-refreshed metadata and button progress added |
-| 5 | Feed manager, settings, dedupe, retention | Dedupe, retention, settings, and profile switcher done; feed manager deferred |
+| 4 | Digest grouped by category, ranking, low-confidence section, reasons, processing actions | Done; archive, dismiss, recategorize, feedback, and live counts added |
+| 5 | Feed manager, settings, dedupe, retention | Dedupe, retention, digest-volume settings, and profile switcher done; feed manager deferred |
 | 6 | Tests, fixtures, logging, accessibility pass, docs, CI | Done |
 | 7 | Hardening, containerization, delivery docs | Done |
 
@@ -674,17 +784,26 @@ Recorded `tev1:0.8b` result:
 Implemented criteria:
 
 - First run creates the database, seeds both profiles and feed catalogs, and sets one active profile.
-- Refresh backfills 7 days on first successful fetch, respects the configured new-item cap, and produces a 72-hour digest.
-- Category sections show title, source, relative time, match probability, and additional matched-category tags.
-- The digest shows the last successful refresh time; active jobs show percentage progress in the refresh button.
+- Refresh uses the configured window on the first successful fetch and `REFRESH_OVERLAP_HOURS` behind the last non-error fetch on later fetches, clipped by item retention; it respects the configured per-source and new-item caps and produces a digest for the configured window (default 72 hours).
+- Catalog entries can map a feed to one optional category; feeds mapped to disabled categories are not fetched and their items are excluded from the digest, counts, and classification.
+- Category sections show title, source, relative time, match probability, additional matched-category tags, and the templated reason unless hidden.
+- The digest shows the last successful refresh time; pending items offer Classify pending without fetching; active jobs show phase-aware percentage progress and a stop control while classifying.
+- Classify pending processes up to `MAX_NEW_ITEMS` pending items without fetching; stopping classification preserves completed classifications and reports a stopped summary.
 - Low-confidence items are collapsed and can be hidden with the `hide_low_confidence` setting.
 - The header switches profiles and persists the active profile.
-- The Settings page controls `max_new_items`, `hide_low_confidence`, and `hide_reason_text`.
-- Ollama downtime produces a failed job with an error and a working retry button; the previous digest remains visible.
+- The Settings page controls `window_hours`, `max_items_per_feed`, `max_new_items`, `hide_low_confidence`, and `hide_reason_text`.
+- Matched and low-confidence entries provide Archive, Dismiss, Recategorize, and Feedback actions.
+- Archive hides an item, retains a snapshot that survives item retention, exposes it on the Archive page, and converts removal to dismissal while the item exists.
+- Dismiss hides an item permanently with no undo or processed-items view.
+- Recategorize records a structured category correction and optional note; disabled categories can be suggested without being enabled.
+- Archive and Dismiss update affected category badges and counts without a full page reload.
+- The Feedback page lists corrections and exports deterministic JSONL; feedback snapshots survive item retention.
+- Unknown profile, item, or category requests return 404; profile/item ownership is validated.
+- Ollama downtime produces a failed job with an error and a working retry button; the previous digest remains visible. Retry preserves the failed job's mode.
 - Duplicate feed entries do not create duplicate digest items.
 - No private services, accounts, telemetry, or full-text fetching are present.
 - `ruff check .` and `python -m unittest discover -s tests -v` pass locally and in GitHub Actions on push/PR.
-- Route integration tests cover first-run redirect, digest, refresh enqueue, HTMX job panel, job fragment, retry, `/healthz`, and favicon against a temporary database without Ollama.
+- Route integration tests cover first-run redirect, digest, refresh enqueue, classify enqueue, HTMX job panel, job fragment, stop, retry, settings, processing actions, archive/feedback pages, JSONL export, unknown IDs, `/healthz`, and favicon against a temporary database without Ollama.
 - `docker compose up --build` starts Ollama, pulls `TEV_MODEL`, and serves the app on `127.0.0.1:8000`; only loopback host ports are published.
 - The container healthcheck uses `/healthz`.
 - The model gate result is recorded; the gate did not pass and the prototype waiver is documented.
@@ -708,7 +827,7 @@ Deferred criteria:
 - Overlapping categories produce systematic false positives.
 - Feed URLs and formats break; per-feed isolation and visible status mitigate this.
 - Prompt injection in feed text is possible. The model has no tools, but hostile text can bias a decision; low-confidence handling is the mitigation.
-- Category and feed management are not available in the UI; settings are limited to display preferences and the new-item cap.
+- Category and feed management are not available in the UI; settings are limited to digest volume and display preferences.
 - Compose requires `.env`; model selection depends on `TEV_MODEL` being present there. Custom absolute `DB_PATH`/`LOG_PATH` values need a matching volume mount.
 - A failed model pull blocks app startup by design.
 - CI does not validate the Docker image, Compose stack, or live Ollama behavior.
@@ -723,7 +842,7 @@ Deferred criteria:
 - Whether to add Docker/Compose validation to CI.
 - Whether Docker Compose or the Python install is the primary delivery path.
 - Whether to support GPU acceleration in Ollama.
-- Whether `RESCORE_DAYS` and `hide_reason_text` should remain reserved or be removed.
+- Whether `RESCORE_DAYS` should remain reserved or be removed.
 
 ---
 
