@@ -80,10 +80,16 @@ class FeedTestCase(unittest.TestCase):
         self.conn.execute("DELETE FROM feeds WHERE profile_id = ?", (PROFILE_ID,))
         self.conn.commit()
 
-    def add_feed(self, url: str = SOURCE_URL, title: str = "Example") -> int:
+    def add_feed(
+        self,
+        url: str = SOURCE_URL,
+        title: str = "Example",
+        *,
+        category: str | None = None,
+    ) -> int:
         cursor = self.conn.execute(
-            "INSERT INTO feeds (profile_id, url, title) VALUES (?, ?, ?)",
-            (PROFILE_ID, url, title),
+            "INSERT INTO feeds (profile_id, url, title, category) VALUES (?, ?, ?, ?)",
+            (PROFILE_ID, url, title, category),
         )
         self.conn.commit()
         return int(cursor.lastrowid)
@@ -353,8 +359,65 @@ class FeedTestCase(unittest.TestCase):
         self.assertTrue(statuses[bad_url].startswith("parse error:"))
         self.assertEqual(statuses[crash_url], "error: unexpected network failure")
 
-    def test_refresh_without_enabled_feeds_raises(self) -> None:
-        with self.assertRaises(FeedError):
+    def test_refresh_skips_feeds_in_disabled_categories_until_reenabled(self) -> None:
+        disabled_url = "https://example.com/disabled-category.xml"
+        active_url = "https://example.com/active.xml"
+        self.add_feed(disabled_url, "Disabled category", category="ml-research")
+        self.add_feed(active_url, "Active")
+        self.conn.execute(
+            "UPDATE categories SET enabled = 0 WHERE profile_id = ? AND id = 'ml-research'",
+            (PROFILE_ID,),
+        )
+        self.conn.commit()
+        fetched: list[str] = []
+
+        def fetch(feed: dict[str, object]) -> FeedFetchResult:
+            fetched.append(str(feed["title"]))
+            return FeedFetchResult(status="not_modified", url=str(feed["url"]))
+
+        summary = refresh_profile(
+            self.conn,
+            self.settings,
+            PROFILE_ID,
+            fetcher=fetch,
+            now=NOW,
+        )
+
+        self.assertEqual(summary["feeds_total"], 1)
+        self.assertEqual(fetched, ["Active"])
+        disabled_status = self.conn.execute(
+            "SELECT last_status FROM feeds WHERE url = ?",
+            (disabled_url,),
+        ).fetchone()[0]
+        self.assertIsNone(disabled_status)
+
+        self.conn.execute(
+            "UPDATE categories SET enabled = 1 WHERE profile_id = ? AND id = 'ml-research'",
+            (PROFILE_ID,),
+        )
+        self.conn.commit()
+        fetched.clear()
+
+        summary = refresh_profile(
+            self.conn,
+            self.settings,
+            PROFILE_ID,
+            fetcher=fetch,
+            now=NOW,
+        )
+
+        self.assertEqual(summary["feeds_total"], 2)
+        self.assertEqual(sorted(fetched), ["Active", "Disabled category"])
+
+    def test_refresh_without_fetchable_feeds_raises(self) -> None:
+        self.add_feed(category="ml-research")
+        self.conn.execute(
+            "UPDATE categories SET enabled = 0 WHERE profile_id = ? AND id = 'ml-research'",
+            (PROFILE_ID,),
+        )
+        self.conn.commit()
+
+        with self.assertRaisesRegex(FeedError, "no fetchable feeds"):
             refresh_profile(self.conn, self.settings, PROFILE_ID, now=NOW)
 
     def test_retention_and_pending_counts(self) -> None:

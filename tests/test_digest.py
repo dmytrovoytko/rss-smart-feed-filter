@@ -33,6 +33,10 @@ class DigestTestCase(unittest.TestCase):
         self.addCleanup(self.conn.close)
         seed_database(self.conn, self.settings)
         self.conn.execute("DELETE FROM feeds WHERE profile_id = ?", (PROFILE_ID,))
+        self.conn.execute(
+            "UPDATE categories SET enabled = 1 WHERE profile_id = ?",
+            (PROFILE_ID,),
+        )
         self.conn.commit()
         self._feed_seq = 0
         self._item_seq = 0
@@ -49,22 +53,36 @@ class DigestTestCase(unittest.TestCase):
             )
         }
 
-    def add_feed(self, title: str, *, enabled: bool = True) -> int:
+    def add_feed(
+        self,
+        title: str,
+        *,
+        enabled: bool = True,
+        category: str | None = None,
+    ) -> int:
         self._feed_seq += 1
         cursor = self.conn.execute(
             """
-            INSERT INTO feeds (profile_id, url, title, enabled)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO feeds (profile_id, url, title, enabled, category)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 PROFILE_ID,
                 f"https://example.com/feed-{self._feed_seq}.xml",
                 title,
                 1 if enabled else 0,
+                category,
             ),
         )
         self.conn.commit()
         return int(cursor.lastrowid)
+
+    def set_category_enabled(self, category_id: str, enabled: bool = True) -> None:
+        self.conn.execute(
+            "UPDATE categories SET enabled = ? WHERE profile_id = ? AND id = ?",
+            (1 if enabled else 0, PROFILE_ID, category_id),
+        )
+        self.conn.commit()
 
     def add_item(
         self,
@@ -241,13 +259,15 @@ class DigestTestCase(unittest.TestCase):
         disabled_feed_item = self.add_item("Disabled feed item", feed_id=disabled_feed)
         self.add_score(disabled_feed_item, "books-film-music", 0.9)
 
+        disabled_category_id = "science-space"
         disabled_category = self.conn.execute(
             """
             SELECT id, version_hash FROM categories
-            WHERE profile_id = ? AND enabled = 0 LIMIT 1
+            WHERE profile_id = ? AND id = ?
             """,
-            (PROFILE_ID,),
+            (PROFILE_ID, disabled_category_id),
         ).fetchone()
+        self.set_category_enabled(disabled_category_id, False)
         disabled_item = self.add_item("Disabled category item")
         self.conn.execute(
             """
@@ -290,6 +310,31 @@ class DigestTestCase(unittest.TestCase):
         self.assertEqual(digest["classified_items"], 1)
         self.assertEqual(digest["pending_items"], 4)
         self.assertEqual(digest["low_confidence"], [])
+
+    def test_category_disabled_feed_is_excluded_until_reenabled(self) -> None:
+        category_id = "books-film-music"
+        category_feed = self.add_feed("Category feed", category=category_id)
+        item = self.add_item("Category item", feed_id=category_feed)
+        self.add_score(item, category_id, 0.9)
+        self.set_category_enabled(category_id, False)
+
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+
+        self.assertEqual(digest["window_items"], 0)
+        self.assertEqual(digest["classified_items"], 0)
+        self.assertEqual(digest["pending_items"], 0)
+        self.assertEqual(digest["sections"], [])
+
+        self.set_category_enabled(category_id, True)
+
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+
+        self.assertEqual(digest["window_items"], 1)
+        self.assertEqual(digest["classified_items"], 1)
+        self.assertEqual(
+            [item["title"] for item in digest["sections"][0]["entries"]],
+            ["Category item"],
+        )
 
     def test_low_confidence_sorted_by_best_probability(self) -> None:
         for title, probability in (

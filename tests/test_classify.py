@@ -148,6 +148,7 @@ class ClassifyTestCase(unittest.TestCase):
         *,
         published: datetime | None = None,
         slug: str | None = None,
+        feed_id: int | None = None,
     ) -> int:
         url = f"https://example.com/{slug or title.lower().replace(' ', '-')}"
         cursor = self.conn.execute(
@@ -158,7 +159,7 @@ class ClassifyTestCase(unittest.TestCase):
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                self.feed_id,
+                feed_id or self.feed_id,
                 url,
                 url_hash(url),
                 title,
@@ -510,6 +511,45 @@ class ClassifyTestCase(unittest.TestCase):
             for row in self.conn.execute("SELECT DISTINCT item_id FROM classifications")
         }
         self.assertEqual(classified_ids, {newest})
+
+    def test_category_disabled_feed_items_are_not_classified(self) -> None:
+        cursor = self.conn.execute(
+            "INSERT INTO feeds (profile_id, url, title, category) VALUES (?, ?, ?, ?)",
+            (
+                PROFILE_ID,
+                "https://example.com/category-feed.xml",
+                "Category feed",
+                "ml-research",
+            ),
+        )
+        category_feed_id = int(cursor.lastrowid)
+        self.conn.commit()
+        self.add_item(
+            "Disabled category item",
+            published=NOW - timedelta(hours=1),
+            feed_id=category_feed_id,
+        )
+        self.conn.execute(
+            "UPDATE categories SET enabled = 0 WHERE profile_id = ? AND id = 'ml-research'",
+            (PROFILE_ID,),
+        )
+        self.conn.commit()
+        client = FakeClassifier()
+
+        self.assertEqual(self.pending_count(), 0)
+        summary = classify_pending_items(
+            self.conn,
+            self.settings,
+            PROFILE_ID,
+            client=client,
+            now=NOW,
+        )
+
+        self.assertEqual(summary["pending_before"], 0)
+        self.assertEqual(summary["selected_items"], 0)
+        self.assertEqual(summary["classified_items"], 0)
+        self.assertEqual(client.preflight_calls, 0)
+        self.assertEqual(client.calls, [])
 
     def test_no_enabled_categories_is_a_noop(self) -> None:
         self.add_item("Uncategorized", published=NOW - timedelta(hours=1))

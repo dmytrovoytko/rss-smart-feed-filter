@@ -124,6 +124,20 @@ class RouteIntegrationTests(unittest.TestCase):
         self.assertIn('id="job-panel"', response.text)
         self.assertIn("Last", response.text)
 
+    def test_digest_shows_fetchable_sources_and_category_disabled_state(self) -> None:
+        with open_db(self.db_path) as conn:
+            conn.execute(
+                "UPDATE categories SET enabled = 0 "
+                "WHERE profile_id = 'fun.v1' AND id = 'games-tabletop'"
+            )
+            conn.commit()
+
+        response = self.client.get("/profiles/fun.v1/digest")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("sources fetchable", response.text)
+        self.assertIn("category disabled", response.text)
+
     def test_unknown_profile_digest_returns_404(self) -> None:
         response = self.client.get("/profiles/unknown/digest")
 

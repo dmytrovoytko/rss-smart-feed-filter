@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sqlite3
 import tempfile
 import unittest
@@ -8,9 +9,10 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
+import yaml
 from app.config import Settings
 from app.db import SCHEMA_VERSION, connect, init_db
-from app.seed import seed_database, set_active_profile
+from app.seed import SeedError, seed_database, set_active_profile
 from app.versioning import category_version_hash, normalize_text
 
 
@@ -41,6 +43,16 @@ class SeedTests(FoundationTestCase):
         self.assertEqual(summary["categories_created"], 17)
         self.assertEqual(summary["feeds_created"], 25)
         self.assertEqual(summary["active_profile_id"], "ds.v1")
+        fun_profile = yaml.safe_load(
+            (Path(self.settings.profiles_dir) / "fun.v1.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        expected_fun_enabled = sum(
+            1
+            for category in fun_profile["categories"]
+            if category.get("enabled", True)
+        )
 
         with self.connection() as conn:
             profiles = {
@@ -58,7 +70,7 @@ class SeedTests(FoundationTestCase):
                 conn.execute(
                     "SELECT SUM(enabled) FROM categories WHERE profile_id = 'fun.v1'"
                 ).fetchone()[0],
-                3,
+                expected_fun_enabled,
             )
 
     def test_seed_is_idempotent(self) -> None:
@@ -73,12 +85,30 @@ class SeedTests(FoundationTestCase):
         self.assertEqual(summary["categories_total"], 17)
         self.assertEqual(summary["feeds_total"], 25)
 
-    def test_reseeding_does_not_restore_a_removed_feed(self) -> None:
+    def test_seed_maps_single_topic_feeds_to_categories(self) -> None:
+        self.seed()
+
+        with self.connection() as conn:
+            mappings = {
+                str(row["title"]): row["category"]
+                for row in conn.execute(
+                    "SELECT title, category FROM feeds ORDER BY title"
+                )
+            }
+
+        self.assertEqual(mappings["arXiv cs.LG"], "ml-research")
+        self.assertEqual(mappings["dbt Blog"], "data-engineering")
+        self.assertEqual(mappings["Smitten Kitchen"], "cooking-bbq")
+        self.assertEqual(mappings["The Verge"], None)
+        self.assertEqual(mappings["KDnuggets"], None)
+
+    def test_reseeding_backfills_categories_without_restoring_removed_feeds(self) -> None:
         self.seed()
         with self.connection() as conn:
             conn.execute(
                 "DELETE FROM feeds WHERE profile_id = 'ds.v1' AND title = 'KDnuggets'"
             )
+            conn.execute("UPDATE feeds SET category = NULL")
             conn.commit()
 
         summary = self.seed()
@@ -90,6 +120,77 @@ class SeedTests(FoundationTestCase):
                     "SELECT 1 FROM feeds WHERE profile_id = 'ds.v1' AND title = 'KDnuggets'"
                 ).fetchone()
             )
+            self.assertEqual(
+                conn.execute(
+                    """
+                    SELECT category FROM feeds
+                    WHERE profile_id = 'ds.v1' AND title = 'arXiv cs.LG'
+                    """
+                ).fetchone()[0],
+                "ml-research",
+            )
+            self.assertEqual(
+                conn.execute(
+                    """
+                    SELECT category FROM feeds
+                    WHERE profile_id = 'fun.v1' AND title = 'Smitten Kitchen'
+                    """
+                ).fetchone()[0],
+                "cooking-bbq",
+            )
+
+    def test_unknown_catalog_category_fails_seeding(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            profiles_dir = Path(tmp)
+            source_dir = Path(self.settings.profiles_dir)
+            for name in ("ds.v1.yaml", "fun.v1.yaml"):
+                shutil.copy(source_dir / name, profiles_dir / name)
+            (profiles_dir / "catalog.yaml").write_text(
+                "version: 1\n"
+                "feeds:\n"
+                "  ds.v1:\n"
+                "    - title: Unknown category feed\n"
+                "      url: https://example.com/feed.xml\n"
+                "      category: missing-category\n"
+                "  fun.v1: []\n",
+                encoding="utf-8",
+            )
+            settings = replace(self.settings, profiles_dir=profiles_dir)
+
+            with self.connection() as conn, self.assertRaises(SeedError) as context:
+                seed_database(conn, settings)
+
+        self.assertIn("unknown category", str(context.exception))
+        self.assertIn("missing-category", str(context.exception))
+
+    def test_real_profiles_have_at_least_one_enabled_category(self) -> None:
+        self.seed()
+
+        with self.connection() as conn:
+            profiles = conn.execute(
+                """
+                SELECT p.id, COUNT(c.id) AS category_count,
+                       COALESCE(SUM(c.enabled), 0) AS enabled_count
+                FROM profiles AS p
+                LEFT JOIN categories AS c ON c.profile_id = p.id
+                GROUP BY p.id
+                ORDER BY p.id
+                """
+            ).fetchall()
+
+        self.assertTrue(profiles)
+        for row in profiles:
+            with self.subTest(profile_id=row["id"]):
+                self.assertGreater(
+                    row["category_count"],
+                    0,
+                    f"{row['id']}: at least one category must be enabled",
+                )
+                self.assertGreater(
+                    row["enabled_count"],
+                    0,
+                    f"{row['id']}: at least one category must be enabled",
+                )
 
     def test_active_profile_switch_keeps_single_active_row(self) -> None:
         self.seed()
@@ -177,6 +278,52 @@ class MigrationTests(unittest.TestCase):
         self.assertIn("phase", columns)
         self.assertEqual(row["mode"], "refresh")
         self.assertIsNone(row["phase"])
+        self.assertEqual(version, SCHEMA_VERSION)
+
+    def test_init_db_adds_feed_category_to_v2_database(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "v2.db"
+            conn = sqlite3.connect(db_path)
+            conn.executescript(
+                """
+                CREATE TABLE feeds (
+                    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                    profile_id       TEXT NOT NULL,
+                    url              TEXT NOT NULL,
+                    title            TEXT NOT NULL,
+                    enabled          INTEGER NOT NULL DEFAULT 1
+                                     CHECK (enabled IN (0, 1)),
+                    etag             TEXT,
+                    last_modified    TEXT,
+                    last_fetched_at  TEXT,
+                    last_status      TEXT,
+                    UNIQUE (profile_id, url)
+                );
+                INSERT INTO feeds (profile_id, url, title)
+                VALUES ('ds.v1', 'https://example.com/feed.xml', 'Example');
+                PRAGMA user_version = 2;
+                """
+            )
+            conn.commit()
+            conn.close()
+
+            init_db(db_path)
+
+            migrated = connect(db_path)
+            try:
+                columns = {
+                    str(row["name"])
+                    for row in migrated.execute("PRAGMA table_info(feeds)")
+                }
+                row = migrated.execute(
+                    "SELECT category FROM feeds ORDER BY id LIMIT 1"
+                ).fetchone()
+                version = migrated.execute("PRAGMA user_version").fetchone()[0]
+            finally:
+                migrated.close()
+
+        self.assertIn("category", columns)
+        self.assertIsNone(row["category"])
         self.assertEqual(version, SCHEMA_VERSION)
 
 
