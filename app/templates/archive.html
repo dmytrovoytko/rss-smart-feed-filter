@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Archive · {{ profile.name }}{% endblock %}
+
+{% block content %}
+  <section class="page-head" aria-labelledby="archive-title">
+    <div>
+      <p class="eyebrow">{{ profile.name }}</p>
+      <h1 id="archive-title">Archive</h1>
+      <p class="meta-line">Saved items stay here even after the source item expires.</p>
+    </div>
+    <div class="head-actions">
+      <a class="button button-secondary" href="{{ request.url_for('digest', profile_id=profile.id) }}">Back to digest</a>
+    </div>
+  </section>
+
+  {% if archived %}
+    <ol class="archive-list">
+      {% for item in archived %}
+        <li class="panel archive-item">
+          <div class="archive-body">
+            <h2>
+              <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+            </h2>
+            <p class="digest-meta">
+              {{ item.source }}
+              <span aria-hidden="true">·</span>
+              published {{ item.published_at|human_time }}
+              <span aria-hidden="true">·</span>
+              archived {{ item.archived_at|human_time }}
+            </p>
+          </div>
+          <form
+            method="post"
+            action="{{ request.url_for('remove_archive_item', profile_id=profile.id, item_id=item.item_id) }}"
+            hx-post="{{ request.url_for('remove_archive_item', profile_id=profile.id, item_id=item.item_id) }}"
+            hx-target="closest li"
+            hx-swap="outerHTML"
+          >
+            <button class="button button-secondary" type="submit">Remove from archive</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <section class="empty-state" aria-labelledby="archive-empty-title">
+      <div>
+        <h2 id="archive-empty-title">No archived items</h2>
+        <p>Use Process → Archive on a digest item to keep it here.</p>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

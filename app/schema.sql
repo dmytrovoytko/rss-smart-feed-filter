@@ -125,3 +125,58 @@ CREATE TABLE IF NOT EXISTS settings (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS archived_items (
+    profile_id    TEXT NOT NULL,
+    item_id       INTEGER NOT NULL,
+    title         TEXT NOT NULL,
+    url           TEXT NOT NULL,
+    source        TEXT NOT NULL,
+    summary       TEXT NOT NULL DEFAULT '',
+    published_at  TEXT,
+    fetched_at    TEXT NOT NULL,
+    archived_at   TEXT NOT NULL,
+    PRIMARY KEY (profile_id, item_id),
+    FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_archived_items_profile_archived
+    ON archived_items (profile_id, archived_at DESC, item_id DESC);
+
+CREATE TABLE IF NOT EXISTS dismissed_items (
+    profile_id    TEXT NOT NULL,
+    item_id       INTEGER NOT NULL,
+    dismissed_at  TEXT NOT NULL,
+    PRIMARY KEY (profile_id, item_id),
+    FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dismissed_items_profile_dismissed
+    ON dismissed_items (profile_id, dismissed_at DESC, item_id DESC);
+
+CREATE TABLE IF NOT EXISTS category_feedback (
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id               TEXT NOT NULL,
+    item_id                  INTEGER NOT NULL,
+    item_title               TEXT NOT NULL,
+    item_url                 TEXT NOT NULL,
+    item_source              TEXT NOT NULL,
+    category_id              TEXT NOT NULL,
+    category_name            TEXT NOT NULL,
+    category_version         TEXT NOT NULL,
+    model                    TEXT NOT NULL,
+    probability              REAL NOT NULL,
+    suggested_category_id    TEXT,
+    suggested_category_name  TEXT,
+    note                     TEXT,
+    created_at               TEXT NOT NULL,
+    FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_category_feedback_profile_created
+    ON category_feedback (profile_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_category_feedback_profile_item
+    ON category_feedback (profile_id, item_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_category_feedback_profile_match
+    ON category_feedback (profile_id, item_id, category_id);

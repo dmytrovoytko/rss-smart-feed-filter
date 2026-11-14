@@ -1,0 +1,111 @@
+{% for section in digest.sections %}
+  <details class="panel digest-section" aria-labelledby="category-{{ section.id }}" open>
+    <summary>
+      <span>{{ section.name }}</span>
+      <span class="count-badge" id="category-count-{{ section.id }}">{{ section.entries|length }}</span>
+    </summary>
+    <p class="digest-meta">
+      weight {{ "%.1f"|format(section.weight) }}×
+    </p>
+    <br>
+    <ol class="digest-list">
+      {% for item in section.entries %}
+        <li class="digest-item">
+          <div class="digest-body">
+            <h3>
+              <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+            </h3>
+            <p class="digest-meta">
+              {{ item.source }}
+              <span aria-hidden="true">·</span>
+              {{ item.effective_at|human_time }}
+            </p>
+            {% if not digest.hide_reason_text %}
+              <p class="digest-reason">{{ item.reason }}</p>
+            {% endif %}
+
+            {% if item.tags|length != 1 %}
+            <ul class="tag-list" aria-label="Also matched">
+              <li class="digest-meta">Also matched:</li>
+              {% for tag in item.tags %}
+                {% if tag.name != section.name %}<li class="tag">{{ tag.name }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </div>
+          <div class="digest-side">
+            <span class="probability" title="Match probability">p={{ "%.2f"|format(item.probability) }}</span>
+            {% with rejected_category_id=section.id, rejected_category_name=section.name, low_confidence=false %}
+              {% include "partials/process_menu.html" %}
+            {% endwith %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </details>
+{% endfor %}
+
+{% if digest.low_confidence %}
+  <details class="panel low-confidence">
+    <summary>
+      <span>Low confidence</span>
+      <span class="count-badge" id="low-confidence-count">{{ digest.low_confidence|length }}</span>
+    </summary>
+    <p class="muted low-confidence-note">
+      No enabled category reached the {{ "%.2f"|format(digest.threshold) }} threshold.
+      Ordered by best probability.
+    </p>
+    <ol class="digest-list">
+      {% for item in digest.low_confidence %}
+        <li class="digest-item">
+          <div class="digest-body">
+            <h3>
+              <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+            </h3>
+            <p class="digest-meta">
+              {{ item.source }}
+              <span aria-hidden="true">·</span>
+              {{ item.effective_at|human_time }}
+            </p>
+            {% if not digest.hide_reason_text %}
+              <p class="digest-reason">
+                Best match: {{ item.best_category }} (p={{ "%.2f"|format(item.probability) }})
+              </p>
+            {% endif %}
+          </div>
+          <div class="digest-side">
+            <span class="probability probability-low" title="Best match probability">p={{ "%.2f"|format(item.probability) }}</span>
+            {% with rejected_category_id=item.best_category_id, rejected_category_name=item.best_category, low_confidence=true %}
+              {% include "partials/process_menu.html" %}
+            {% endwith %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </details>
+{% endif %}
+
+{% if not digest.sections and not digest.low_confidence %}
+  <section class="empty-state" aria-labelledby="empty-title">
+    <div class="empty-icon" aria-hidden="true">
+      <svg viewBox="0 0 48 48" role="presentation" focusable="false">
+        <path d="M10 12h28v5H10zm0 10h20v5H10zm0 10h12v5H10z"></path>
+      </svg>
+    </div>
+    <div>
+      {% if digest.window_items == 0 %}
+        <h2 id="empty-title">No items in this window</h2>
+        <p>Refresh to fetch more items from your sources.</p>
+      {% elif digest.classified_items == 0 %}
+        <h2 id="empty-title">{{ digest.window_items }} item{% if digest.window_items != 1 %}s{% endif %} waiting to be classified</h2>
+        <p>Use Classify pending to process up to {{ max_new_items }} items with <code>{{ settings.tev_model }}</code>.</p>
+      {% elif digest.hide_low_confidence and digest.low_confidence_count %}
+        <h2 id="empty-title">No categorized items</h2>
+        <p>Low-confidence items are hidden in settings.</p>
+      {% else %}
+        <h2 id="empty-title">No categorized items</h2>
+        <p>Nothing in this window matched an enabled category.</p>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}

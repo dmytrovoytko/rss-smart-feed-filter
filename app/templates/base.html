@@ -35,6 +35,10 @@
           <span class="profile-pill">{{ profile.name }}</span>
         {% endif %}
         <nav class="primary-nav" aria-label="Primary">
+          {% if active_profile_id %}
+            <a href="{{ request.url_for('archive_page', profile_id=active_profile_id) }}">Archive</a>
+            <a href="{{ request.url_for('feedback_page', profile_id=active_profile_id) }}">Feedback</a>
+          {% endif %}
           <a href="{{ request.url_for('settings_page') }}">Settings</a>
         </nav>
       </div>

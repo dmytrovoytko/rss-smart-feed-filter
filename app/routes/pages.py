@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,6 +25,20 @@ from app.services.preferences import (
     set_max_items_per_feed,
     set_max_new_items,
     set_window_hours,
+)
+from app.services.processing import (
+    archive_item as archive_item_record,
+)
+from app.services.processing import (
+    dismiss_item as dismiss_item_record,
+)
+from app.services.processing import (
+    list_archived,
+    list_feedback,
+    remove_from_archive,
+)
+from app.services.processing import (
+    recategorize_item as recategorize_item_record,
 )
 
 router = APIRouter()
@@ -114,6 +129,62 @@ def _job_or_404(conn: sqlite3.Connection, job_id: int) -> dict[str, object]:
     if job is None:
         raise HTTPException(status_code=404, detail=f"unknown job: {job_id}")
     return job
+
+
+def _item_belongs_to_profile(
+    conn: sqlite3.Connection,
+    profile_id: str,
+    item_id: int,
+) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1
+        FROM items AS i
+        JOIN feeds AS f ON f.id = i.feed_id
+        WHERE i.id = ? AND f.profile_id = ?
+        """,
+        (item_id, profile_id),
+    ).fetchone()
+    return row is not None
+
+
+def _feedback_item_or_404(
+    conn: sqlite3.Connection,
+    profile_id: str,
+    item_id: int | None,
+) -> None:
+    if item_id is None:
+        return
+    if _item_belongs_to_profile(conn, profile_id, item_id):
+        return
+    has_feedback = conn.execute(
+        "SELECT 1 FROM category_feedback WHERE profile_id = ? AND item_id = ?",
+        (profile_id, item_id),
+    ).fetchone()
+    if has_feedback is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"unknown item for profile {profile_id}: {item_id}",
+        )
+
+
+def _render_digest_process_response(
+    request: Request,
+    conn: sqlite3.Connection,
+    profile_id: str,
+) -> HTMLResponse:
+    settings = _settings(request)
+    digest = build_digest(conn, settings, profile_id)
+    return _templates(request).TemplateResponse(
+        request=request,
+        name="partials/digest_process_response.html",
+        context={
+            "profile": digest["profile"],
+            "digest": digest,
+            "settings": settings,
+            "max_new_items": get_max_new_items(conn, settings.max_new_items),
+        },
+    )
 
 
 def _render_job_panel(
@@ -336,6 +407,159 @@ def digest(profile_id: str, request: Request) -> HTMLResponse:
             "last_refreshed_at": last_refreshed_at,
         },
     )
+
+
+@router.get("/profiles/{profile_id}/archive", response_class=HTMLResponse)
+def archive_page(profile_id: str, request: Request) -> HTMLResponse:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        profile = _profile_or_404(conn, profile_id)
+        archived = list_archived(conn, profile_id)
+        profiles = _profile_choices(conn)
+        active_profile_id = _active_profile_id(conn)
+
+    return _templates(request).TemplateResponse(
+        request=request,
+        name="archive.html",
+        context={
+            "profile": profile,
+            "archived": archived,
+            "profiles": profiles,
+            "active_profile_id": active_profile_id,
+        },
+    )
+
+
+@router.get("/profiles/{profile_id}/feedback", response_class=HTMLResponse)
+def feedback_page(
+    profile_id: str,
+    request: Request,
+    item_id: int | None = None,
+) -> HTMLResponse:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        profile = _profile_or_404(conn, profile_id)
+        _feedback_item_or_404(conn, profile_id, item_id)
+        feedback = list_feedback(conn, profile_id, item_id=item_id)
+        profiles = _profile_choices(conn)
+        active_profile_id = _active_profile_id(conn)
+
+    return _templates(request).TemplateResponse(
+        request=request,
+        name="feedback.html",
+        context={
+            "profile": profile,
+            "feedback": feedback,
+            "item_id": item_id,
+            "profiles": profiles,
+            "active_profile_id": active_profile_id,
+        },
+    )
+
+
+@router.get("/profiles/{profile_id}/feedback.jsonl")
+def feedback_export(
+    profile_id: str,
+    request: Request,
+    item_id: int | None = None,
+) -> Response:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        _profile_or_404(conn, profile_id)
+        _feedback_item_or_404(conn, profile_id, item_id)
+        feedback = list_feedback(conn, profile_id, item_id=item_id)
+
+    lines = [
+        json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        for row in feedback
+    ]
+    payload = "\n".join(lines)
+    if payload:
+        payload += "\n"
+    return Response(
+        payload,
+        media_type="application/x-ndjson",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{profile_id}-feedback.jsonl"'
+            )
+        },
+    )
+
+
+@router.post("/profiles/{profile_id}/items/{item_id}/archive")
+def archive_item(profile_id: str, item_id: int, request: Request) -> Response:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        _profile_or_404(conn, profile_id)
+        try:
+            archive_item_record(conn, profile_id, item_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if _is_htmx(request):
+            return _render_digest_process_response(request, conn, profile_id)
+
+    return RedirectResponse(f"/profiles/{profile_id}/digest", status_code=303)
+
+
+@router.post("/profiles/{profile_id}/items/{item_id}/dismiss")
+def dismiss_item(profile_id: str, item_id: int, request: Request) -> Response:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        _profile_or_404(conn, profile_id)
+        try:
+            dismiss_item_record(conn, profile_id, item_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if _is_htmx(request):
+            return _render_digest_process_response(request, conn, profile_id)
+
+    return RedirectResponse(f"/profiles/{profile_id}/digest", status_code=303)
+
+
+@router.post("/profiles/{profile_id}/items/{item_id}/recategorize")
+def recategorize_item(
+    profile_id: str,
+    item_id: int,
+    request: Request,
+    category_id: str = Form(...),
+    suggested_category_id: str = Form(""),
+    note: str = Form(""),
+) -> Response:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        _profile_or_404(conn, profile_id)
+        try:
+            recategorize_item_record(
+                conn,
+                profile_id,
+                item_id,
+                category_id,
+                model=settings.tev_model,
+                suggested_category_id=suggested_category_id or None,
+                note=note or None,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    if _is_htmx(request):
+        return HTMLResponse("", headers={"HX-Refresh": "true"})
+    return RedirectResponse(f"/profiles/{profile_id}/digest", status_code=303)
+
+
+@router.post("/profiles/{profile_id}/archive/{item_id}/remove")
+def remove_archive_item(profile_id: str, item_id: int, request: Request) -> Response:
+    settings = _settings(request)
+    with open_db(settings.db_path) as conn:
+        _profile_or_404(conn, profile_id)
+        try:
+            remove_from_archive(conn, profile_id, item_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    if _is_htmx(request):
+        return HTMLResponse("")
+    return RedirectResponse(f"/profiles/{profile_id}/archive", status_code=303)
 
 
 @router.post("/profiles/{profile_id}/refresh")

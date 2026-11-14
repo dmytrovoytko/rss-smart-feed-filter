@@ -6,9 +6,9 @@
 
 The problem: professionals with RSS still drown in unread items, and generic readers sort by recency while AI summarizers add reading work instead of removing it.
 
-Smart Feed Filter removes the triage step. You define a profile: a small set of categories, each with a name, description, criteria, and weight. A local decision model scores every feed item against those categories. The app shows the last 72 hours grouped by category, ranked inside each category, with tags and (optionally) a one-line reason.
+Smart Feed Filter removes the triage step. You define a profile: a small set of categories, each with a name, description, criteria, and weight. A local decision model scores every feed item against those categories. The app shows the configured digest window (72 hours by default) grouped by category, ranked inside each category, with tags and (optionally) a one-line reason.
 
-It's a filtering engine, not a summarizer. No article fetching, no private accounts, no generated prose.
+It's a filtering engine, not a summarizer. No article fetching, no private accounts, no generated prose. Each digest item has a Process menu to archive or dismiss it, reject a wrong category match, and inspect or export the feedback log.
 
 Who gets a little more relaxed, or lazier? The data scientist who wants to skim only ML-method papers and skip hiring/funding noise; the off-work reader who wants hobby content without the feed becoming an everything feed.
 
@@ -16,7 +16,7 @@ Who gets a little more relaxed, or lazier? The data scientist who wants to skim 
 
 Smart Feed Filter's workflow in two steps: 
 1. the user defines a profile of weighted categories with plain-language criteria, 
-2. then hits refresh to fetch and dedupe public RSS feeds while a local Ollama decision model scores each new item against the enabled categories, producing a 72-hour digest grouped and ranked by category.
+2. then hits refresh to fetch and dedupe public RSS feeds while a local Ollama decision model scores each new item against the enabled categories, producing a digest for the configured window (72 hours by default) grouped and ranked by category.
 
 ```
 User defines profile (categories, criteria, weights)
@@ -29,6 +29,9 @@ Local classifier (Ollama) scores new items
         │
         ▼
 72h digest grouped by category, ranked by score
+        │
+        ▼
+Process menu → archive, dismiss, recategorize, feedback
 ```
 
 ## Demo
@@ -98,7 +101,18 @@ feed-filter
 
 Then open <http://127.0.0.1:8000> and press **Refresh** to build the first digest. On first run the app creates the SQLite database under `data/` and seeds both `ds.v1` and `fun.v1` profiles with their feed catalogs.
 
-The header switches between profiles. The **Settings** page controls the max new items per refresh, hides the low-confidence section, and hides match explanations.
+The header switches between profiles and opens the Archive and Feedback pages. The **Settings** page controls the digest window, max items per source, max new items per refresh, hides the low-confidence section, and hides match explanations.
+
+### Processing a digest
+
+Use the per-item **Process** menu on matched or low-confidence entries:
+
+- **Archive** hides the item and keeps a snapshot on the Archive page, even after normal item retention.
+- **Dismiss** hides the item permanently for that item's lifetime; there is no undo.
+- **Recategorize** rejects one category match, optionally suggests another profile category (disabled suggestions are labeled and stay disabled), and adds a note; it hides only that match.
+- **Feedback** opens the correction log filtered to the item; the Feedback page also exports deterministic JSONL.
+
+Archived items stay out of the digest and candidate counts. Removing one from the Archive page converts it to a dismissal while the underlying item exists.
 
 ## Docker Compose
 
@@ -112,6 +126,7 @@ docker compose up --build
 Then open <http://127.0.0.1:8000>. Compose starts three services: `ollama`, a one-shot `ollama-pull` that fetches `TEV_MODEL`, and `app`. SQLite data and downloaded models persist in named volumes.
 
 Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
+Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -134,8 +149,9 @@ Settings come from the environment or a local `.env` file; `.env.example` lists 
 | `HOST` | `127.0.0.1` | Bind address |
 | `PORT` | `8000` | HTTP port |
 | `MAX_NEW_ITEMS` | `50` | Environment default; the Settings page can override it |
-| `RETENTION_DAYS` | `30` | Item retention |
-| `WINDOW_HOURS` | `72` | Digest window |
+| `MAX_ITEMS_PER_FEED` | `10` | Environment default; the Settings page can override it |
+| `RETENTION_DAYS` | `30` | Item and job retention; expands when the digest window is wider |
+| `WINDOW_HOURS` | `72` | Environment default; the Settings page can override it |
 | `RESCORE_DAYS` | `14` | Retroactive re-score window |
 | `THRESHOLD` | `0.55` | Default match threshold for new profiles |
 
@@ -148,7 +164,7 @@ python -m unittest discover -s tests -v
 ruff check .
 ```
 
-The integration tests exercise the digest, settings, profile switching, refresh, job fragment, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
+The integration tests exercise the digest, processing actions, archive and feedback pages, JSONL export, settings, profile switching, refresh, job fragment, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
 
 GitHub Actions runs lint and the full test suite on every push and pull request via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 

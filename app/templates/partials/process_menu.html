@@ -1,0 +1,70 @@
+<details class="process-menu">
+  <summary>Process</summary>
+  <div class="process-panel">
+    <div class="process-actions">
+      <form
+        method="post"
+        action="{{ request.url_for('archive_item', profile_id=profile.id, item_id=item.id) }}"
+        hx-post="{{ request.url_for('archive_item', profile_id=profile.id, item_id=item.id) }}"
+        hx-target="#digest-results"
+        hx-swap="outerHTML"
+      >
+        <button class="button button-secondary" type="submit">Archive</button>
+      </form>
+      <form
+        method="post"
+        action="{{ request.url_for('dismiss_item', profile_id=profile.id, item_id=item.id) }}"
+        hx-post="{{ request.url_for('dismiss_item', profile_id=profile.id, item_id=item.id) }}"
+        hx-target="#digest-results"
+        hx-swap="outerHTML"
+      >
+        <button class="button button-secondary" type="submit">Dismiss</button>
+      </form>
+      <a
+        class="button button-secondary"
+        href="{{ request.url_for('feedback_page', profile_id=profile.id) }}?item_id={{ item.id }}"
+      >Feedback</a>
+    </div>
+
+    <details class="recategorize">
+      <summary>Recategorize</summary>
+      <form
+        class="recategorize-form"
+        method="post"
+        action="{{ request.url_for('recategorize_item', profile_id=profile.id, item_id=item.id) }}"
+      >
+        <input type="hidden" name="category_id" value="{{ rejected_category_id }}">
+        <p class="fine-print">
+          Hide the “{{ rejected_category_name }}” match for this item.
+          {% if low_confidence %}This also hides the low-confidence entry.{% endif %}
+        </p>
+        <div class="field">
+          <label for="suggested-{{ item.id }}-{{ rejected_category_id }}">Suggested category</label>
+          <select
+            id="suggested-{{ item.id }}-{{ rejected_category_id }}"
+            name="suggested_category_id"
+            onmousedown="if(this.options.length>4){this.size=4;}"
+            onchange='this.size=0;' onblur="this.size=0;"
+          >
+            <option value="">No suggestion</option>
+            {% for category in digest.suggestion_categories %}
+              {% if category.id != rejected_category_id %}
+                <option value="{{ category.id }}">{{ category.name }}{% if not category.enabled %} (disabled){% endif %}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="note-{{ item.id }}-{{ rejected_category_id }}">Note</label>
+          <textarea
+            id="note-{{ item.id }}-{{ rejected_category_id }}"
+            name="note"
+            rows="2"
+            maxlength="2000"
+          ></textarea>
+        </div>
+        <button class="button" type="submit">Save correction</button>
+      </form>
+    </details>
+  </div>
+</details>

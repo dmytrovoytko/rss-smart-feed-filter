@@ -1,0 +1,8 @@
+<div id="digest-results">
+  {% include "partials/digest_results.html" %}
+</div>
+<span id="digest-candidate-count" hx-swap-oob="true">{{ digest.window_items }} candidate item{% if digest.window_items != 1 %}s{% endif %} in window</span>
+<span id="digest-classified-count" hx-swap-oob="true"{% if not digest.classified_items %} hidden{% endif %}>
+  <span aria-hidden="true">·</span>
+  {{ digest.classified_items }} classified
+</span>

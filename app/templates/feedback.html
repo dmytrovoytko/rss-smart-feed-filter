@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback · {{ profile.name }}{% endblock %}
+
+{% block content %}
+  <section class="page-head" aria-labelledby="feedback-title">
+    <div>
+      <p class="eyebrow">{{ profile.name }}</p>
+      <h1 id="feedback-title">Feedback</h1>
+      <p class="meta-line">
+        {% if item_id %}
+          Feedback for item {{ item_id }}.
+          <a href="{{ request.url_for('feedback_page', profile_id=profile.id) }}">Show all feedback</a>
+        {% else %}
+          Category corrections recorded for this profile.
+        {% endif %}
+      </p>
+    </div>
+    <div class="head-actions">
+      <a
+        class="button button-secondary"
+        href="{{ request.url_for('feedback_export', profile_id=profile.id) }}{% if item_id %}?item_id={{ item_id }}{% endif %}"
+      >Export JSONL</a>
+      <a class="button button-secondary" href="{{ request.url_for('digest', profile_id=profile.id) }}">Back to digest</a>
+    </div>
+  </section>
+
+  {% if feedback %}
+    <div class="panel table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Recorded</th>
+            <th scope="col">Item</th>
+            <th scope="col">Rejected match</th>
+            <th scope="col">Suggested</th>
+            <th scope="col">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in feedback %}
+            <tr>
+              <td>{{ entry.created_at|human_time }}</td>
+              <td>
+                <a href="{{ entry.item_url }}" target="_blank" rel="noopener noreferrer">{{ entry.item_title }}</a>
+                <span class="muted"><br>{{ entry.item_source }}</span>
+              </td>
+              <td>
+                {{ entry.category_name }}
+                <span class="muted">p={{ "%.2f"|format(entry.probability) }}</span>
+              </td>
+              <td>{{ entry.suggested_category_name or "—" }}</td>
+              <td>{{ entry.note or "—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <section class="empty-state" aria-labelledby="feedback-empty-title">
+      <div>
+        <h2 id="feedback-empty-title">No feedback yet</h2>
+        <p>Use Process → Recategorize to record a category correction.</p>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

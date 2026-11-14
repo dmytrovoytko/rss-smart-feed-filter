@@ -51,6 +51,24 @@ def _load_categories(
     ]
 
 
+def _load_suggestion_categories(
+    conn: sqlite3.Connection,
+    profile_id: str,
+) -> list[dict[str, Any]]:
+    return [
+        dict(row)
+        for row in conn.execute(
+            """
+            SELECT id, name, enabled
+            FROM categories
+            WHERE profile_id = ?
+            ORDER BY position, id
+            """,
+            (profile_id,),
+        )
+    ]
+
+
 def _classified_rows(
     conn: sqlite3.Connection,
     profile_id: str,
@@ -88,6 +106,13 @@ def _classified_rows(
               AND f.enabled = 1
               AND cl.created_at >= i.fetched_at
               AND i.feed_rank <= ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM category_feedback cf
+                  WHERE cf.profile_id = cl.profile_id
+                    AND cf.item_id = cl.item_id
+                    AND cf.category_id = cl.category_id
+              )
             ORDER BY c.position, cl.probability DESC, i.id
             """,
             (
@@ -132,6 +157,7 @@ def build_digest(
     threshold = float(profile["threshold"])
 
     categories = _load_categories(conn, profile_id)
+    suggestion_categories = _load_suggestion_categories(conn, profile_id)
     hide_low_confidence = _setting_bool(conn, "hide_low_confidence")
     hide_reason_text = _setting_bool(conn, "hide_reason_text")
     window_items = count_window_items(
@@ -149,6 +175,13 @@ def build_digest(
         window_end,
         max_items_per_feed,
     )
+    feedback_item_ids = {
+        int(row["item_id"])
+        for row in conn.execute(
+            "SELECT DISTINCT item_id FROM category_feedback WHERE profile_id = ?",
+            (profile_id,),
+        )
+    }
 
     grouped: dict[int, dict[str, Any]] = {}
     for row in rows:
@@ -218,6 +251,8 @@ def build_digest(
                         "title": item["title"],
                         "url": item["url"],
                         "source": item["source"],
+                        "category_id": match["category_id"],
+                        "category_name": match["category_name"],
                         "effective_at": to_utc_iso(effective_at),
                         "probability": match["probability"],
                         "score": round(score, 6),
@@ -231,7 +266,7 @@ def build_digest(
                 )
             continue
 
-        if not matches:
+        if not matches or item["id"] in feedback_item_ids:
             continue
         best = max(matches, key=lambda match: match["probability"])
         low_confidence.append(
@@ -243,6 +278,7 @@ def build_digest(
                 "effective_at": to_utc_iso(effective_at),
                 "probability": best["probability"],
                 "best_category": best["category_name"],
+                "best_category_id": best["category_id"],
             }
         )
 
@@ -279,6 +315,14 @@ def build_digest(
         "profile": profile,
         "sections": sections,
         "low_confidence": low_confidence,
+        "suggestion_categories": [
+            {
+                "id": str(category["id"]),
+                "name": str(category["name"]),
+                "enabled": bool(category["enabled"]),
+            }
+            for category in suggestion_categories
+        ],
         "low_confidence_count": low_confidence_count,
         "hide_low_confidence": hide_low_confidence,
         "hide_reason_text": hide_reason_text,

@@ -37,6 +37,18 @@ WITH ranked_items AS (
     WHERE f.profile_id = ?
       AND f.enabled = 1
       AND {feed_is_active_sql("f")}
+      AND NOT EXISTS (
+          SELECT 1
+          FROM archived_items ai
+          WHERE ai.profile_id = f.profile_id
+            AND ai.item_id = i.id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM dismissed_items di
+          WHERE di.profile_id = f.profile_id
+            AND di.item_id = i.id
+      )
       AND COALESCE(i.published_at, i.fetched_at) >= ?
       AND COALESCE(i.published_at, i.fetched_at) <= ?
 )
