@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import tempfile
 import unittest
@@ -89,6 +90,110 @@ class RouteIntegrationTests(unittest.TestCase):
                     now,
                     now,
                     "pending-content",
+                ),
+            )
+            conn.commit()
+
+    def _add_classified_item(
+        self,
+        title: str,
+        *,
+        category_id: str | None = None,
+        probability: float = 0.9,
+        profile_id: str | None = None,
+    ) -> tuple[int, str]:
+        profile = profile_id or self.profile_id
+        now = to_utc_iso(datetime.now(UTC))
+        with open_db(self.db_path) as conn:
+            category = conn.execute(
+                """
+                SELECT id, version_hash
+                FROM categories
+                WHERE profile_id = ? AND enabled = 1
+                  AND (? IS NULL OR id = ?)
+                ORDER BY position, id
+                LIMIT 1
+                """,
+                (profile, category_id, category_id),
+            ).fetchone()
+            if category is None:
+                raise AssertionError(f"missing category for {profile}: {category_id}")
+            feed = conn.execute(
+                "SELECT id FROM feeds WHERE profile_id = ? ORDER BY id LIMIT 1",
+                (profile,),
+            ).fetchone()
+            cursor = conn.execute(
+                """
+                INSERT INTO items (
+                    feed_id, canonical_url, url_hash, title, summary,
+                    published_at, fetched_at, content_hash
+                ) VALUES (?, ?, ?, ?, '', ?, ?, ?)
+                """,
+                (
+                    feed["id"],
+                    f"https://example.com/{title.lower().replace(' ', '-')}",
+                    f"url-{title}",
+                    title,
+                    now,
+                    now,
+                    f"content-{title}",
+                ),
+            )
+            item_id = int(cursor.lastrowid)
+            conn.execute(
+                """
+                INSERT INTO classifications (
+                    item_id, profile_id, category_id, category_version,
+                    model, probability, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    item_id,
+                    profile,
+                    str(category["id"]),
+                    str(category["version_hash"]),
+                    self.settings.tev_model,
+                    probability,
+                    now,
+                ),
+            )
+            conn.commit()
+        return item_id, str(category["id"])
+
+    def _add_score(
+        self,
+        item_id: int,
+        category_id: str,
+        probability: float,
+        *,
+        profile_id: str | None = None,
+    ) -> None:
+        profile = profile_id or self.profile_id
+        now = to_utc_iso(datetime.now(UTC))
+        with open_db(self.db_path) as conn:
+            category = conn.execute(
+                """
+                SELECT version_hash
+                FROM categories
+                WHERE profile_id = ? AND id = ?
+                """,
+                (profile, category_id),
+            ).fetchone()
+            conn.execute(
+                """
+                INSERT INTO classifications (
+                    item_id, profile_id, category_id, category_version,
+                    model, probability, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    item_id,
+                    profile,
+                    category_id,
+                    str(category["version_hash"]),
+                    self.settings.tev_model,
+                    probability,
+                    now,
                 ),
             )
             conn.commit()
@@ -541,6 +646,332 @@ class RouteIntegrationTests(unittest.TestCase):
     def test_retry_unknown_job_returns_404(self) -> None:
         response = self.client.post("/jobs/999999/retry")
 
+        self.assertEqual(response.status_code, 404)
+
+    def test_archive_item_hides_digest_and_remove_converts_to_dismiss(self) -> None:
+        item_id, _ = self._add_classified_item("Archive me")
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/archive",
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(
+            response.headers["location"],
+            f"/profiles/{self.profile_id}/digest",
+        )
+
+        archive = self.client.get(f"/profiles/{self.profile_id}/archive")
+        self.assertIn("Archive me", archive.text)
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertNotIn("Archive me", digest.text)
+
+        removed = self.client.post(
+            f"/profiles/{self.profile_id}/archive/{item_id}/remove",
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(removed.status_code, 200)
+        self.assertEqual(removed.text, "")
+
+        with open_db(self.db_path) as conn:
+            archived = conn.execute(
+                "SELECT COUNT(*) FROM archived_items WHERE profile_id = ? AND item_id = ?",
+                (self.profile_id, item_id),
+            ).fetchone()[0]
+            dismissed = conn.execute(
+                "SELECT COUNT(*) FROM dismissed_items WHERE profile_id = ? AND item_id = ?",
+                (self.profile_id, item_id),
+            ).fetchone()[0]
+        self.assertEqual(archived, 0)
+        self.assertEqual(dismissed, 1)
+
+        archive = self.client.get(f"/profiles/{self.profile_id}/archive")
+        self.assertNotIn("Archive me", archive.text)
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertNotIn("Archive me", digest.text)
+
+    def test_dismiss_item_hides_item_without_processed_view(self) -> None:
+        item_id, _ = self._add_classified_item("Dismiss me")
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/dismiss",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="digest-results"', response.text)
+        self.assertNotIn("Dismiss me", response.text)
+        self.assertIn("0 candidate item", response.text)
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertNotIn("Dismiss me", digest.text)
+        archive = self.client.get(f"/profiles/{self.profile_id}/archive")
+        self.assertNotIn("Dismiss me", archive.text)
+        with open_db(self.db_path) as conn:
+            dismissed = conn.execute(
+                "SELECT COUNT(*) FROM dismissed_items WHERE profile_id = ? AND item_id = ?",
+                (self.profile_id, item_id),
+            ).fetchone()[0]
+        self.assertEqual(dismissed, 1)
+
+    def test_archive_updates_category_counts_without_reload(self) -> None:
+        first_id, category_id = self._add_classified_item("Count one")
+        second_id, _ = self._add_classified_item(
+            "Count two",
+            category_id=category_id,
+        )
+
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertIn(f'id="category-count-{category_id}">2</span>', digest.text)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{first_id}/archive",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(f'id="category-count-{category_id}">1</span>', response.text)
+        self.assertIn("1 candidate item in window", response.text)
+        self.assertIn("1 classified", response.text)
+        self.assertNotIn("Count one", response.text)
+        self.assertIn("Count two", response.text)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{second_id}/archive",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(f'id="category-count-{category_id}"', response.text)
+        self.assertIn("No items in this window", response.text)
+        self.assertIn("0 candidate item", response.text)
+
+    def test_archive_updates_low_confidence_count_without_reload(self) -> None:
+        first_id, _ = self._add_classified_item("Low one", probability=0.2)
+        self._add_classified_item("Low two", probability=0.2)
+
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertIn('id="low-confidence-count">2</span>', digest.text)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{first_id}/archive",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="low-confidence-count">1</span>', response.text)
+        self.assertNotIn("Low one", response.text)
+        self.assertIn("Low two", response.text)
+
+    def test_recategorize_accepts_disabled_suggestion_without_enabling(self) -> None:
+        with open_db(self.db_path) as conn:
+            rejected = conn.execute(
+                """
+                SELECT id, name FROM categories
+                WHERE profile_id = ? AND enabled = 1
+                ORDER BY position, id
+                LIMIT 1
+                """,
+                (self.profile_id,),
+            ).fetchone()
+            suggested = conn.execute(
+                """
+                SELECT id, name FROM categories
+                WHERE profile_id = ? AND enabled = 1 AND id != ?
+                ORDER BY position, id
+                LIMIT 1
+                """,
+                (self.profile_id, rejected["id"]),
+            ).fetchone()
+            assert suggested is not None
+            conn.execute(
+                "UPDATE categories SET enabled = 0 WHERE profile_id = ? AND id = ?",
+                (self.profile_id, suggested["id"]),
+            )
+            conn.commit()
+
+        item_id, _ = self._add_classified_item(
+            "Disabled suggestion item",
+            category_id=str(rejected["id"]),
+        )
+
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertIn(
+            f'<option value="{suggested["id"]}">'
+            f'{html.escape(str(suggested["name"]))} (disabled)</option>',
+            digest.text,
+        )
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/recategorize",
+            data={
+                "category_id": rejected["id"],
+                "suggested_category_id": suggested["id"],
+                "note": "Disabled but useful",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        with open_db(self.db_path) as conn:
+            feedback = conn.execute(
+                "SELECT * FROM category_feedback WHERE profile_id = ? AND item_id = ?",
+                (self.profile_id, item_id),
+            ).fetchone()
+            enabled = conn.execute(
+                "SELECT enabled FROM categories WHERE profile_id = ? AND id = ?",
+                (self.profile_id, suggested["id"]),
+            ).fetchone()[0]
+        self.assertIsNotNone(feedback)
+        self.assertEqual(feedback["suggested_category_id"], suggested["id"])
+        self.assertEqual(feedback["suggested_category_name"], suggested["name"])
+        self.assertEqual(enabled, 0)
+
+    def test_recategorize_hides_match_and_records_feedback(self) -> None:
+        with open_db(self.db_path) as conn:
+            categories = [
+                str(row["id"])
+                for row in conn.execute(
+                    """
+                    SELECT id FROM categories
+                    WHERE profile_id = ? AND enabled = 1
+                    ORDER BY position, id
+                    LIMIT 2
+                    """,
+                    (self.profile_id,),
+                )
+            ]
+        rejected, suggested = categories
+        item_id, _ = self._add_classified_item(
+            "Recategorize me",
+            category_id=rejected,
+        )
+        self._add_score(item_id, suggested, 0.9)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/recategorize",
+            data={
+                "category_id": rejected,
+                "suggested_category_id": suggested,
+                "note": "Wrong category match",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertEqual(digest.text.count("Recategorize me"), 1)
+        feedback = self.client.get(
+            f"/profiles/{self.profile_id}/feedback?item_id={item_id}"
+        )
+        self.assertIn("Wrong category match", feedback.text)
+        with open_db(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT * FROM category_feedback WHERE profile_id = ? AND item_id = ?",
+                (self.profile_id, item_id),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row["category_id"], rejected)
+        self.assertEqual(row["suggested_category_id"], suggested)
+        self.assertEqual(row["note"], "Wrong category match")
+
+    def test_recategorize_from_low_confidence_hides_entry(self) -> None:
+        item_id, category_id = self._add_classified_item(
+            "Low confidence item",
+            probability=0.2,
+        )
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertIn("Low confidence item", digest.text)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/recategorize",
+            data={"category_id": category_id},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        digest = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertNotIn("Low confidence item", digest.text)
+
+    def test_feedback_page_and_jsonl_export_are_deterministic(self) -> None:
+        item_id, category_id = self._add_classified_item("Feedback item")
+        self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/recategorize",
+            data={"category_id": category_id, "note": "Export me"},
+        )
+
+        page = self.client.get(
+            f"/profiles/{self.profile_id}/feedback?item_id={item_id}"
+        )
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Export me", page.text)
+        all_feedback = self.client.get(f"/profiles/{self.profile_id}/feedback")
+        self.assertIn("Export me", all_feedback.text)
+
+        first = self.client.get(
+            f"/profiles/{self.profile_id}/feedback.jsonl?item_id={item_id}"
+        )
+        second = self.client.get(
+            f"/profiles/{self.profile_id}/feedback.jsonl?item_id={item_id}"
+        )
+        self.assertEqual(first.status_code, 200)
+        self.assertTrue(first.headers["content-type"].startswith("application/x-ndjson"))
+        self.assertEqual(first.text, second.text)
+        rows = [json.loads(line) for line in first.text.splitlines()]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["item_id"], item_id)
+        self.assertEqual(rows[0]["category_id"], category_id)
+        self.assertEqual(rows[0]["note"], "Export me")
+
+    def test_processing_actions_validate_profile_item_and_category(self) -> None:
+        response = self.client.post(
+            "/profiles/unknown/items/1/archive",
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/999999/archive",
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/archive/999999/remove",
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        item_id, category_id = self._add_classified_item("Unknown category item")
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/recategorize",
+            data={"category_id": "missing-category"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{item_id}/recategorize",
+            data={
+                "category_id": category_id,
+                "suggested_category_id": "missing-suggestion",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        foreign_item, _ = self._add_classified_item(
+            "Foreign item",
+            profile_id="fun.v1",
+        )
+        response = self.client.post(
+            f"/profiles/{self.profile_id}/items/{foreign_item}/archive",
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.get(
+            f"/profiles/{self.profile_id}/feedback?item_id=999999"
+        )
         self.assertEqual(response.status_code, 404)
 
     def test_favicon_is_served(self) -> None:

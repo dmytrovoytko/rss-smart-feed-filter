@@ -326,6 +326,42 @@ class MigrationTests(unittest.TestCase):
         self.assertIsNone(row["category"])
         self.assertEqual(version, SCHEMA_VERSION)
 
+    def test_init_db_adds_processing_tables_to_v3_database(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "v3.db"
+            init_db(db_path)
+            conn = sqlite3.connect(db_path)
+            conn.executescript(
+                """
+                DROP TABLE IF EXISTS category_feedback;
+                DROP TABLE IF EXISTS dismissed_items;
+                DROP TABLE IF EXISTS archived_items;
+                PRAGMA user_version = 3;
+                """
+            )
+            conn.commit()
+            conn.close()
+
+            init_db(db_path)
+
+            migrated = connect(db_path)
+            try:
+                tables = {
+                    str(row["name"])
+                    for row in migrated.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    )
+                }
+                version = migrated.execute("PRAGMA user_version").fetchone()[0]
+            finally:
+                migrated.close()
+
+        self.assertIn("archived_items", tables)
+        self.assertIn("dismissed_items", tables)
+        self.assertIn("category_feedback", tables)
+        self.assertEqual(version, SCHEMA_VERSION)
+
+
 
 class VersioningTests(unittest.TestCase):
     def test_whitespace_is_normalized(self) -> None:

@@ -10,6 +10,14 @@ from app.config import Settings
 from app.db import connect, init_db
 from app.seed import seed_database
 from app.services.digest import build_digest, rank_score, recency_factor
+from app.services.processing import (
+    archive_item,
+    dismiss_item,
+    list_archived,
+    list_feedback,
+    recategorize_item,
+    remove_from_archive,
+)
 from app.timeutil import human_time, to_utc_iso
 from jinja2 import Environment, FileSystemLoader
 
@@ -420,6 +428,161 @@ class DigestTestCase(unittest.TestCase):
         self.assertTrue(digest["hide_low_confidence"])
         self.assertEqual(digest["low_confidence"], [])
         self.assertEqual(digest["low_confidence_count"], 1)
+
+    def test_archive_and_dismiss_hide_items_and_counts(self) -> None:
+        pending = self.add_item("Pending item")
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(digest["window_items"], 1)
+        self.assertEqual(digest["pending_items"], 1)
+
+        archive_item(self.conn, PROFILE_ID, pending, now=NOW)
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(digest["window_items"], 0)
+        self.assertEqual(digest["pending_items"], 0)
+        self.assertEqual(digest["sections"], [])
+        self.assertEqual(
+            [row["title"] for row in list_archived(self.conn, PROFILE_ID)],
+            ["Pending item"],
+        )
+
+        removed = remove_from_archive(self.conn, PROFILE_ID, pending, now=NOW)
+        self.assertTrue(removed["dismissed"])
+        self.assertEqual(list_archived(self.conn, PROFILE_ID), [])
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(digest["window_items"], 0)
+        self.assertEqual(digest["pending_items"], 0)
+
+        dismissed = self.add_item("Dismissed item")
+        dismiss_item(self.conn, PROFILE_ID, dismissed, now=NOW)
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(digest["window_items"], 0)
+        self.assertEqual(digest["pending_items"], 0)
+
+    def test_recategorize_hides_only_the_rejected_category_match(self) -> None:
+        item = self.add_item("Multi category")
+        self.add_score(item, "books-film-music", 0.9)
+        self.add_score(item, "cycling-outdoors", 0.9)
+
+        before = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(
+            [section["id"] for section in before["sections"]],
+            ["books-film-music", "cycling-outdoors"],
+        )
+
+        feedback = recategorize_item(
+            self.conn,
+            PROFILE_ID,
+            item,
+            "books-film-music",
+            model=self.settings.tev_model,
+            suggested_category_id="cycling-outdoors",
+            note="Wrong category",
+            now=NOW,
+        )
+
+        after = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(
+            [section["id"] for section in after["sections"]],
+            ["cycling-outdoors"],
+        )
+        self.assertEqual(after["low_confidence"], [])
+        self.assertEqual(feedback["category_name"], "Books, Film & Music")
+        self.assertEqual(feedback["suggested_category_name"], "Cycling & Outdoors")
+        self.assertEqual(feedback["note"], "Wrong category")
+        self.assertEqual(len(list_feedback(self.conn, PROFILE_ID, item_id=item)), 1)
+
+    def test_recategorize_accepts_disabled_suggestion_without_enabling(self) -> None:
+        item = self.add_item("Disabled suggestion")
+        self.add_score(item, "books-film-music", 0.9)
+        suggested = self.conn.execute(
+            "SELECT id, name FROM categories WHERE profile_id = ? AND id = ?",
+            (PROFILE_ID, "science-space"),
+        ).fetchone()
+        self.set_category_enabled("science-space", False)
+
+        feedback = recategorize_item(
+            self.conn,
+            PROFILE_ID,
+            item,
+            "books-film-music",
+            model=self.settings.tev_model,
+            suggested_category_id="science-space",
+            note="Keep disabled for now",
+            now=NOW,
+        )
+
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        suggestions = {
+            category["id"]: category for category in digest["suggestion_categories"]
+        }
+        enabled = self.conn.execute(
+            "SELECT enabled FROM categories WHERE profile_id = ? AND id = ?",
+            (PROFILE_ID, "science-space"),
+        ).fetchone()[0]
+        self.assertEqual(feedback["suggested_category_id"], suggested["id"])
+        self.assertEqual(feedback["suggested_category_name"], suggested["name"])
+        self.assertEqual(enabled, 0)
+        self.assertIn("science-space", suggestions)
+        self.assertFalse(suggestions["science-space"]["enabled"])
+        self.assertNotIn(
+            "science-space",
+            [section["id"] for section in digest["sections"]],
+        )
+
+    def test_recategorize_from_low_confidence_hides_the_entry(self) -> None:
+        item = self.add_item("Low item")
+        self.add_score(item, "books-film-music", 0.4)
+        self.add_score(item, "cycling-outdoors", 0.3)
+
+        before = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(len(before["low_confidence"]), 1)
+        self.assertEqual(before["low_confidence"][0]["best_category_id"], "books-film-music")
+
+        recategorize_item(
+            self.conn,
+            PROFILE_ID,
+            item,
+            "books-film-music",
+            model=self.settings.tev_model,
+            now=NOW,
+        )
+
+        after = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(after["low_confidence"], [])
+        self.assertEqual(after["window_items"], 1)
+
+    def test_archive_and_feedback_snapshots_survive_item_deletion(self) -> None:
+        archived_item = self.add_item("Archived snapshot")
+        archive_item(self.conn, PROFILE_ID, archived_item, now=NOW)
+
+        feedback_item = self.add_item("Feedback snapshot")
+        self.add_score(feedback_item, "books-film-music", 0.9)
+        recategorize_item(
+            self.conn,
+            PROFILE_ID,
+            feedback_item,
+            "books-film-music",
+            model=self.settings.tev_model,
+            note="Keep this note",
+            now=NOW,
+        )
+
+        self.conn.execute(
+            "DELETE FROM items WHERE id IN (?, ?)",
+            (archived_item, feedback_item),
+        )
+        self.conn.commit()
+
+        archived = list_archived(self.conn, PROFILE_ID)
+        self.assertEqual([row["title"] for row in archived], ["Archived snapshot"])
+        feedback = list_feedback(self.conn, PROFILE_ID, item_id=feedback_item)
+        self.assertEqual(len(feedback), 1)
+        self.assertEqual(feedback[0]["item_title"], "Feedback snapshot")
+        self.assertEqual(feedback[0]["note"], "Keep this note")
+
+        digest = build_digest(self.conn, self.settings, PROFILE_ID, now=NOW)
+        self.assertEqual(digest["window_items"], 0)
+
 
 
 if __name__ == "__main__":
