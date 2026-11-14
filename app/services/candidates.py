@@ -5,7 +5,21 @@ from datetime import UTC, datetime, timedelta
 
 from app.timeutil import to_utc_iso
 
-RANKED_CANDIDATES_CTE = """
+
+def feed_is_active_sql(alias: str = "f") -> str:
+    return f"""(
+        {alias}.category IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM categories c
+            WHERE c.profile_id = {alias}.profile_id
+              AND c.id = {alias}.category
+              AND c.enabled = 1
+        )
+    )"""
+
+
+RANKED_CANDIDATES_CTE = f"""
 WITH ranked_items AS (
     SELECT i.id,
            i.feed_id,
@@ -22,6 +36,7 @@ WITH ranked_items AS (
     JOIN feeds f ON f.id = i.feed_id
     WHERE f.profile_id = ?
       AND f.enabled = 1
+      AND {feed_is_active_sql("f")}
       AND COALESCE(i.published_at, i.fetched_at) >= ?
       AND COALESCE(i.published_at, i.fetched_at) <= ?
 )

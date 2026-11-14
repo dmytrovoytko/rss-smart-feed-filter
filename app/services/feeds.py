@@ -20,7 +20,11 @@ import requests
 from dateutil import parser as date_parser
 
 from app.config import Settings, effective_item_retention_days
-from app.services.candidates import count_window_items, window_bounds
+from app.services.candidates import (
+    count_window_items,
+    feed_is_active_sql,
+    window_bounds,
+)
 from app.services.classify import count_pending_items
 from app.services.preferences import get_max_items_per_feed, get_window_hours
 from app.timeutil import parse_iso, to_utc_iso
@@ -613,18 +617,19 @@ def refresh_profile(
     feeds = [
         dict(row)
         for row in conn.execute(
-            """
-            SELECT id, profile_id, url, title, etag, last_modified,
-                   last_fetched_at, last_status
-            FROM feeds
-            WHERE profile_id = ? AND enabled = 1
-            ORDER BY id
+            f"""
+            SELECT f.id, f.profile_id, f.url, f.title, f.etag, f.last_modified,
+                   f.last_fetched_at, f.last_status
+            FROM feeds f
+            WHERE f.profile_id = ? AND f.enabled = 1
+              AND {feed_is_active_sql("f")}
+            ORDER BY f.id
             """,
             (profile_id,),
         )
     ]
     if not feeds:
-        raise FeedError("no enabled feeds for this profile")
+        raise FeedError("no fetchable feeds for this profile")
 
     owns_fetcher = fetcher is None
     active_fetcher = fetcher or FeedFetcher()

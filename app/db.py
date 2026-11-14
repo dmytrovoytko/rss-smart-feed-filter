@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
@@ -44,6 +44,19 @@ def _ensure_jobs_columns(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE jobs ADD COLUMN phase TEXT")
 
 
+def _ensure_feeds_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        str(row["name"])
+        for row in conn.execute("PRAGMA table_info(feeds)").fetchall()
+    }
+    if "category" not in columns:
+        conn.execute("ALTER TABLE feeds ADD COLUMN category TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_feeds_profile_category "
+        "ON feeds (profile_id, category)"
+    )
+
+
 def init_db(db_path: str | Path) -> None:
     with open_db(db_path) as conn:
         version = int(conn.execute("PRAGMA user_version").fetchone()[0])
@@ -56,5 +69,6 @@ def init_db(db_path: str | Path) -> None:
             conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
             if version >= 1:
                 _ensure_jobs_columns(conn)
+            _ensure_feeds_columns(conn)
             conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             conn.commit()

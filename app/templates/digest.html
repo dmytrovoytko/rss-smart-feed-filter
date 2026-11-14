@@ -3,7 +3,7 @@
 {% block title %}{{ profile.name }} digest · Smart Feed Filter{% endblock %}
 
 {% block content %}
-  {% set enabled_feed_count = feeds|selectattr("enabled")|list|length %}
+  {% set fetchable_feed_count = feeds|selectattr("is_fetchable")|list|length %}
   <section class="page-head" aria-labelledby="digest-title">
     <div>
       <p class="eyebrow">{{ profile.kind|capitalize }} profile</p>
@@ -13,10 +13,10 @@
         <!-- <span aria-hidden="true">·</span>
         Threshold {{ "%.2f"|format(digest.threshold) }} -->
         <span aria-hidden="true">·</span>
-        {% if enabled_feed_count == feeds|length %}
+        {% if fetchable_feed_count == feeds|length %}
           {{ feeds|length }} source{% if feeds|length != 1 %}s{% endif %}
         {% else %}
-          {{ enabled_feed_count }} of {{ feeds|length }} sources enabled
+          {{ fetchable_feed_count }} of {{ feeds|length }} sources fetchable
         {% endif %}
         <span aria-hidden="true">·</span>
         <span id="digest-candidate-count">{{ digest.window_items }} candidate item{% if digest.window_items != 1 %}s{% endif %} in window</span>
@@ -33,7 +33,7 @@
       <div id="refresh-control">
         {% include "partials/refresh.html" %}
       </div>
-      <p class="fine-print">Refresh fetches enabled sources, keeps the newest {{ max_items_per_feed }} items per source, and classifies up to {{ max_new_items }} candidates. Classify pending skips fetching.</p>
+      <p class="fine-print">Refresh fetches fetchable sources, keeps the newest {{ max_items_per_feed }} items per source, and classifies up to {{ max_new_items }} candidates. Classify pending skips fetching.</p>
     </div>
   </section>
 
@@ -187,10 +187,15 @@
           </thead>
           <tbody>
             {% for feed in feeds %}
-              <tr{% if not feed.enabled %} class="is-disabled"{% endif %}>
+              <tr{% if not feed.is_fetchable %} class="is-disabled"{% endif %}>
                 <td>
                   <a href="{{ feed.url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}</a>
                   {% if not feed.enabled %}<span class="muted">(disabled)</span>{% endif %}
+                  {% if feed.category %}
+                    <span class="muted">
+                      ({{ feed.category_name or feed.category }}{% if not feed.category_enabled %} category disabled{% endif %})
+                    </span>
+                  {% endif %}
                 </td>
                 <td>
                   {% set status = feed.last_status or "not fetched" %}

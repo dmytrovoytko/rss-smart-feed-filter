@@ -141,11 +141,10 @@ def _seed_profile(
     }
 
 
-def _seed_catalog_feeds(
-    conn: sqlite3.Connection,
-    profile_id: str,
+def _catalog_entries(
     settings: Settings,
-) -> int:
+    profile_id: str,
+) -> tuple[Path, list[Any]]:
     catalog_path = settings.profiles_dir / CATALOG_FILE
     catalog = _load_yaml(catalog_path)
     feeds_by_profile = catalog.get("feeds")
@@ -157,6 +156,38 @@ def _seed_catalog_feeds(
         entries = []
     if not isinstance(entries, list):
         raise SeedError(f"{catalog_path}: feeds.{profile_id} must be a list")
+    return catalog_path, entries
+
+
+def _catalog_feed_category(
+    conn: sqlite3.Connection,
+    profile_id: str,
+    entry: dict[str, Any],
+    context: str,
+) -> str | None:
+    raw_category = entry.get("category")
+    if raw_category is None:
+        return None
+    if not isinstance(raw_category, str) or not raw_category.strip():
+        raise SeedError(f"{context}: category must be a non-empty string")
+    category = raw_category.strip()
+    exists = conn.execute(
+        "SELECT 1 FROM categories WHERE profile_id = ? AND id = ?",
+        (profile_id, category),
+    ).fetchone()
+    if exists is None:
+        raise SeedError(
+            f"{context}: unknown category {category!r} for profile {profile_id}"
+        )
+    return category
+
+
+def _seed_catalog_feeds(
+    conn: sqlite3.Connection,
+    profile_id: str,
+    settings: Settings,
+) -> int:
+    catalog_path, entries = _catalog_entries(settings, profile_id)
 
     count = 0
     for index, entry in enumerate(entries):
@@ -166,17 +197,44 @@ def _seed_catalog_feeds(
         url = _require_text(entry, "url", context)
         title = _require_text(entry, "title", context)
         _validate_http_url(url, context)
+        category = _catalog_feed_category(conn, profile_id, entry, context)
         enabled = 1 if bool(entry.get("enabled", True)) else 0
         conn.execute(
             """
-            INSERT INTO feeds (profile_id, url, title, enabled)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO feeds (profile_id, url, title, enabled, category)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (profile_id, url) DO NOTHING
             """,
-            (profile_id, url, title, enabled),
+            (profile_id, url, title, enabled, category),
         )
         count += 1
     return count
+
+
+def _backfill_catalog_feed_categories(
+    conn: sqlite3.Connection,
+    profile_id: str,
+    settings: Settings,
+) -> int:
+    catalog_path, entries = _catalog_entries(settings, profile_id)
+
+    updated = 0
+    for index, entry in enumerate(entries):
+        context = f"{catalog_path}: feeds.{profile_id}[{index}]"
+        if not isinstance(entry, dict):
+            raise SeedError(f"{context} must be a mapping")
+        url = _require_text(entry, "url", context)
+        _require_text(entry, "title", context)
+        _validate_http_url(url, context)
+        category = _catalog_feed_category(conn, profile_id, entry, context)
+        updated += conn.execute(
+            """
+            UPDATE feeds SET category = ?
+            WHERE profile_id = ? AND url = ?
+            """,
+            (category, profile_id, url),
+        ).rowcount
+    return updated
 
 
 def _choose_active_profile(conn: sqlite3.Connection) -> str:
@@ -254,6 +312,7 @@ def seed_database(conn: sqlite3.Connection, settings: Settings) -> dict[str, Any
             ).fetchone()
             if exists is not None:
                 summary["profiles_existing"] += 1
+                _backfill_catalog_feed_categories(conn, profile_id, settings)
                 continue
             created = _seed_profile(conn, profile_data, settings)
             summary["profiles_created"] += created["profiles"]

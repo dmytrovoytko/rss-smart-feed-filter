@@ -3,52 +3,69 @@ feeds:
   ds.v1:
     - title: arXiv cs.LG
       url: https://rss.arxiv.org/rss/cs.LG
+      category: ml-research
     - title: arXiv stat.ML
       url: https://rss.arxiv.org/rss/stat.ML
+      category: ml-research
     - title: KDnuggets
       url: https://www.kdnuggets.com/feed
     - title: MIT News AI
       url: https://news.mit.edu/rss/topic/artificial-intelligence2
     - title: Simon Willison
       url: https://simonwillison.net/atom/everything/
+      category: llm-genai
     - title: Google AI Blog
       url: https://blog.google/innovation-and-ai/technology/ai/rss/
     - title: Analytics Vidhya
       url: https://www.analyticsvidhya.com/feed/
     - title: dbt Blog
       url: https://www.getdbt.com/blog/feed.xml
+      category: data-engineering
     - title: Data Engineering Weekly
       url: https://www.dataengineeringweekly.com/feed
+      category: data-engineering
     - title: Netflix Tech Blog
       url: https://netflixtechblog.com/feed
     - title: Databricks Blog
       url: https://www.databricks.com/feed
     - title: Occam's Razor
       url: https://www.kaushik.net/avinash/feed/
+      category: analytics-viz
 
   fun.v1:
     - title: Smitten Kitchen
       url: https://feeds.feedburner.com/smittenkitchen
+      category: cooking-bbq
     - title: Bon Appétit
       url: https://www.bonappetit.com/feed/rss
+      category: cooking-bbq
     - title: Literary Hub
       url: https://lithub.com/feed/
+      category: books-film-music
     - title: IndieWire
       url: https://www.indiewire.com/feed/
+      category: books-film-music
     - title: Pitchfork
       url: https://pitchfork.com/feed/feed-news/rss
+      category: books-film-music
     - title: CyclingTips (Velo)
       url: https://velo.outsideonline.com/feed/
+      category: cycling-outdoors
     - title: Bikepacking.com
       url: https://bikepacking.com/feed/
+      category: cycling-outdoors
     - title: Dicebreaker
       url: https://www.dicebreaker.com/feed
+      category: games-tabletop
     - title: Polygon
       url: https://www.polygon.com/feed/
+      category: games-tabletop
     - title: Make
       url: https://makezine.com/feed/
+      category: diy-woodworking
     - title: Atlas Obscura
       url: https://www.atlasobscura.com/feeds/latest
+      category: travel-day-trips
     - title: The Verge
       url: https://www.theverge.com/rss/index.xml
     - title: ScienceDaily

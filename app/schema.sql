@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS feeds (
     url              TEXT NOT NULL,
     title            TEXT NOT NULL,
     enabled          INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    category         TEXT,
     etag             TEXT,
     last_modified    TEXT,
     last_fetched_at  TEXT,

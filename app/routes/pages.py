@@ -282,10 +282,26 @@ def digest(profile_id: str, request: Request) -> HTMLResponse:
         profile = _profile_or_404(conn, profile_id)
         feeds = conn.execute(
             """
-            SELECT id, title, url, enabled, last_fetched_at, last_status
-            FROM feeds
-            WHERE profile_id = ?
-            ORDER BY title
+            SELECT f.id,
+                   f.title,
+                   f.url,
+                   f.enabled,
+                   f.category,
+                   f.last_fetched_at,
+                   f.last_status,
+                   c.name AS category_name,
+                   CASE WHEN c.enabled = 1 THEN 1 ELSE 0 END AS category_enabled,
+                   CASE
+                       WHEN f.enabled = 1
+                        AND (f.category IS NULL OR c.enabled = 1)
+                       THEN 1 ELSE 0
+                   END AS is_fetchable
+            FROM feeds f
+            LEFT JOIN categories c
+              ON c.profile_id = f.profile_id
+             AND c.id = f.category
+            WHERE f.profile_id = ?
+            ORDER BY f.title
             """,
             (profile_id,),
         ).fetchall()
