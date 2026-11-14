@@ -333,44 +333,53 @@
     - [x] 7. Manually verify `docker compose up --build`, `/healthz`, custom `PORT`, and host/remote Ollama overrides; record evidence.
   - Notes: Targets the Containerization criterion; keep the loopback-only default. Compose requires `.env` via `env_file`. CI does not build the image or run Compose.
 
-## Open backlog
-
-- [ ] TASK-022: Plan UI/UX improvements
+- [x] TASK-022: Plan UI/UX improvements
   - Priority: Medium
   - Acceptance criteria:
     - Audit the current digest, job progress, source, and settings interfaces.
     - Identify usability pain points and candidate improvements with tradeoffs.
     - Produce a prioritized shortlist for TASK-023 without changing application code.
   - Tags: #ui #planning
-  - Assignee: @unassigned
+  - Assignee: @pm
+  - Completed: 2026-11-14 09:53 UTC
+  - Verified by: @owner
+  - Evidence: TASK-023 implementation commits 5edc22d and 0471e62; README update 7b36faf; spec 0.3.0 update a7c7383; no separate planning artifact retained.
+  - Resolution: Closed as delivered through TASK-023; the prioritized UI/UX improvements were implemented and documented.
   - Role: @pm
   - Dependencies: None
   - Subtasks:
-    - [ ] 1. Audit current digest, job, source, and settings interfaces.
-    - [ ] 2. Identify pain points and candidate improvements.
-    - [ ] 3. Prioritize a shortlist with scope, risks, and acceptance criteria.
-    - [ ] 4. Hand selected improvements to TASK-023.
-  - Notes: Planning only; no code changes.
+    - [x] 1. Audit current digest, job, source, and settings interfaces.
+    - [x] 2. Identify pain points and candidate improvements.
+    - [x] 3. Prioritize a shortlist with scope, risks, and acceptance criteria.
+    - [x] 4. Hand selected improvements to TASK-023.
+  - Notes: Planning only; no independent code changes. The shortlist is evidenced by the TASK-023 implementation.
 
-- [ ] TASK-023: Implement selected UI/UX improvements
+- [x] TASK-023: Implement selected UI/UX improvements
   - Priority: Medium
   - Acceptance criteria:
     - Implement the improvements selected in TASK-022.
     - Keep the loopback-only, local-first constraints and add no dependencies.
     - Update tests and UI verification for the chosen improvements.
   - Tags: #ui #tests
-  - Assignee: @unassigned
+  - Assignee: @dev
+  - Completed: 2026-11-14 09:53 UTC
+  - Verified by: @owner
+  - Evidence: UI/UX implementation, test updates, README update, spec 0.3.0 update in git repo.
+  - Resolution: Delivered separate Refresh/Classify controls, phase-aware progress, live candidate/pending counts, stop classification, profile switching, Settings controls, README updates, and spec 0.3.0.
   - Role: @dev
   - Dependencies: TASK-022
   - Subtasks:
-    - [ ] 1. Add separate Refresh and Classify pending actions.
-    - [ ] 2. Show phase-aware status and progress between fetch completion and classification start.
-    - [ ] 3. Update live candidate/pending counts and last-refreshed/job summary metadata.
-    - [ ] 4. Add Stop classification while preserving completed classifications.
-    - [ ] 5. Add profile switching and Settings controls for display and volume preferences.
-    - [ ] 6. Update automated tests for the selected UI/UX improvements.
+    - [x] 1. Add separate Refresh and Classify pending actions.
+    - [x] 2. Show phase-aware status and progress between fetch completion and classification start.
+    - [x] 3. Update live candidate/pending counts and last-refreshed/job summary metadata.
+    - [x] 4. Add Stop classification while preserving completed classifications.
+    - [x] 5. Add profile switching and Settings controls for display and volume preferences.
+    - [x] 6. Update automated tests for the selected UI/UX improvements.
+    - [x] 7. Update `README.md` and `_docs/spec.md` for the selected UI/UX improvements.
 
-- [ ] TASK-024: Add category-scoped feed filtering
+## Open backlog
+
+- [!] TASK-024: Add category-scoped feed filtering
   - Priority: High
   - Acceptance criteria:
     - Catalog entries accept one optional `category`.
@@ -380,17 +389,54 @@
     - Existing feed rows receive category mappings on startup without restoring deleted feeds.
     - Unit tests pass and `ruff check .` is clean.
   - Tags: #backend #seed #ui #tests
-  - Assignee: @unassigned
+  - Parked by: @dev
+  - Parked at: 2026-11-14 10:03 UTC
+  - Assignee: @qa
+  - Reason: verification
+  - State: Implementation and local verification are complete. TASK-024 is ready for independent review.
+  - Next step: Re-run the test suite and ruff, review the category filtering paths, and verify the acceptance criteria.
+  - Evidence: `.venv/bin/python -m unittest discover -s tests` passed 107 tests; `.venv/bin/ruff check .` passed. Changed `app/schema.sql`, `app/db.py`, `app/seed.py`, `profiles/catalog.yaml`, `app/services/candidates.py`, `app/services/feeds.py`, `app/routes/pages.py`, `app/templates/digest.html`, and regression tests.
+  - Suggested role: @qa
   - Role: @dev
   - Dependencies: None
   - Subtasks:
-    - [ ] 1. Add optional `category` entries and single-topic mappings in `profiles/catalog.yaml`.
-    - [ ] 2. Add nullable `feeds.category`, schema v3 migration, and seed validation/backfill.
-    - [ ] 3. Exclude category-disabled feeds from fetching and refresh job totals.
-    - [ ] 4. Exclude their items from digest, candidate counts, pending counts, and classification.
-    - [ ] 5. Update source UI to count fetchable feeds and show category-disabled state.
-    - [ ] 6. Add regression tests and run unit tests plus ruff.
+    - [x] 1. Add optional `category` entries and single-topic mappings in `profiles/catalog.yaml`.
+    - [x] 2. Add nullable `feeds.category`, schema v3 migration, and seed validation/backfill.
+    - [x] 3. Exclude category-disabled feeds from fetching and refresh job totals.
+    - [x] 4. Exclude their items from digest, candidate counts, pending counts, and classification.
+    - [x] 5. Update source UI to count fetchable feeds and show category-disabled state.
+    - [x] 6. Add regression tests and run unit tests plus ruff.
+  - Discussion:
+    - 2026-11-14 10:03 UTC @dev #park: Category-scoped feed filtering is implemented and locally verified; parked for independent QA verification.
   - Notes: Use one category per feed; keep broad/mixed feeds uncategorized; docs remain deferred.
+
+- [ ] TASK-025: Add digest processing actions
+  - Priority: High
+  - Acceptance criteria:
+    - Add a per-item Process menu on matched and low-confidence digest entries with Archive, Dismiss, Recategorize, and Feedback.
+    - Archive is item-level: hide the item from digest, low-confidence, and candidate/pending counts; expose it on a separate Archive page; keep a denormalized snapshot that survives item retention; allow removal from Archive.
+    - Removing an archived item converts it to Dismiss while the underlying item still exists, so it does not reappear in the digest.
+    - Dismiss is item-level: hide the item from digest, low-confidence, and candidate/pending counts; provide no undo and no processed view; remove dismissed rows with item retention.
+    - Recategorize records a category match correction with item/category/version/model/probability snapshots, an optional suggested enabled category, and an optional note.
+    - Recategorize hides only the rejected category match; the item remains visible in other category sections; no automatic category move is performed.
+    - Recategorize from Low confidence uses the best category and hides that low-confidence entry.
+    - Feedback opens the feedback log filtered to the item; the feedback page lists profile feedback and exports deterministic JSONL. Feedback snapshots survive item retention.
+    - Unknown profile, item, or category requests return 404; profile/item ownership is validated.
+    - Existing loopback-only, local-first constraints remain; add no dependencies.
+    - Add schema v4 migration after TASK-024's v3, tests for migration/filtering/pages/export, and update `_docs/spec.md` to 0.4.0 and README.
+  - Tags: #backend #ui #schema #tests
+  - Assignee: @unassigned
+  - Role: @dev
+  - Dependencies: TASK-024
+  - Subtasks:
+    - [ ] 1. Add schema v4 tables: `archived_items` with retained snapshot fields, `dismissed_items`, and `category_feedback`; add indexes and migration from v3.
+    - [ ] 2. Add service functions for archive/dismiss/recategorize/feedback and shared digest/count filters for archived, dismissed, and rejected category matches.
+    - [ ] 3. Add POST routes for archive, dismiss, recategorize, and remove-from-archive; add GET archive, feedback, and JSONL export routes.
+    - [ ] 4. Add templates and CSS for the Process menu, recategorize form, Archive page, Feedback page, and navigation links; use HTMX removal/redirects consistent with existing routes.
+    - [ ] 5. Add service tests for filtering, low-confidence behavior, counts, retention snapshots, feedback snapshots, and migration.
+    - [ ] 6. Add route tests for each action, unknown IDs, archive removal, feedback pages, and JSONL content type.
+    - [ ] 7. Update README and `_docs/spec.md`; run `ruff check .` and `python -m unittest discover -s tests -v`.
+  - Notes: `Recategorize` is the structured correction action; `Feedback` is the log/export surface, not a second free-form mutation. Archive removal does not resurface the item. Reuse `RANKED_CANDIDATES_CTE` and the TASK-024 category filtering.
 
 ## Open questions
 
@@ -406,4 +452,9 @@
 - [2026-11-08 09:18 UTC] @owner: Completed and verified TASK-018, added TASK-019 - TASK-021.
 - [2026-11-08 12:49 UTC] @owner: Completed and verified TASK-019 - TASK-020.
 - [2026-11-10 09:05 UTC] @owner: Marked TASK-021 complete after manual Docker Compose verification.
+- [2026-11-11 15:05 UTC] @owner: Implemented selected UI/UX improvements (commit 5edc22d) and updated automated tests (commit 0471e62).
 - [2026-11-11 15:21 UTC] @owner: Added TASK-022 - TASK-024 for UI/UX planning, selected UI/UX improvements, and category-scoped feed filtering.
+- [2026-11-13 19:17 UTC] @owner: Updated README for Settings and profile switching (commit 7b36faf).
+- [2026-11-14 08:52 UTC] @owner: Updated `_docs/spec.md` to 0.3.0 (commit a7c7383).
+- [2026-11-14 09:53 UTC] @owner: Reconciled tracker: completed TASK-022 and TASK-023; added TASK-025 for digest processing actions, dependent on TASK-024.
+- [2026-11-14 10:03 UTC] @dev: Implemented TASK-024 category-scoped feed filtering and parked it for @qa verification.
