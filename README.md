@@ -36,17 +36,39 @@ Process menu → archive, dismiss, recategorize, feedback
 
 ## Demo
 
-- Smart Feed categorization processing
+- **Ranked digest**: profile switcher, per-category counts, ranked items, match probabilities, a completed refresh summary, and the Classify pending action for unprocessed items.
 
-![Smart Feed categorization processing](_docs/screenshots/smart-feed-filtering.png)
+  ![Ranked digest with category counts, a completed refresh, and Classify pending](_docs/screenshots/digest-ranked.png)
 
-- Digest grouped by category, ranked items with match confidence
+- **Multi-category matches**: an item appears in each category section it matches, with its score and Process menu.
 
-![Digest grouped by category, ranked items with match confidence](_docs/screenshots/feed-categorized-filtered.png)
+  ![Digest item matching multiple categories](_docs/screenshots/digest-multiple-matches.png)
 
-- Digest grouped by category, collapsed, including `Low confidence` group and sources
+- **Process corrections**: archive or dismiss an item, reject a wrong category match, and suggest another category, including disabled ones.
 
-![Digest grouped by category, collapsed](_docs/screenshots/feed-categories-collapsed.png)
+  ![Process menu with archive, dismiss, recategorize, and feedback actions](_docs/screenshots/recategorize-feedback.png)
+
+- **Low confidence and sources**: collapsed categories, low-confidence items, and source/category availability.
+
+  ![Low confidence section and source availability panel](_docs/screenshots/digest-collapsed-sources.png)
+
+- **Feedback log**: recorded corrections with rejected and suggested categories, notes, and deterministic JSONL export.
+
+  ![Feedback page with category corrections and JSONL export](_docs/screenshots/feedback-page.png)
+
+- **Archived items**
+
+  ![Archived items](_docs/screenshots/archived-items.png)
+
+- **Settings**: digest window, per-source item cap, new-item cap, and display preferences.
+
+  ![Settings page with digest volume and display preferences](_docs/screenshots/settings-page.png)
+
+- **Refresh progress**: phase-aware job progress with stop-classification support.
+
+  ![Refresh job showing classification progress and stop control](_docs/screenshots/classification-processing.png)
+
+
 
 ## Code
 
@@ -99,9 +121,13 @@ cp .env.example .env   # optional locally; required for Docker Compose
 feed-filter
 ```
 
-Then open <http://127.0.0.1:8000> and press **Refresh** to build the first digest. On first run the app creates the SQLite database under `data/` and seeds both `ds.v1` and `fun.v1` profiles with their feed catalogs.
+Then open <http://127.0.0.1:8000> and press **Refresh** to build the first digest. On first run the app creates the SQLite database under `data/` and seeds both `ds.v1` and `fun.v1` profiles with their feed catalogs. If the new-item cap leaves items pending, use **Classify pending** to process more without fetching the sources again.
 
 The header switches between profiles and opens the Archive and Feedback pages. The **Settings** page controls the digest window, max items per source, max new items per refresh, hides the low-confidence section, and hides match explanations.
+
+### Refresh and classify
+
+**Refresh** fetches enabled feeds, stores new items, and classifies up to `MAX_NEW_ITEMS`. The first successful fetch uses the configured window; later fetches look back `REFRESH_OVERLAP_HOURS` behind the last non-error fetch. **Classify pending** skips fetching and classifies up to the same cap. Both run as local jobs; only one job runs at a time. During classification, **Stop** requests a graceful stop and keeps completed classifications.
 
 ### Processing a digest
 
@@ -116,7 +142,7 @@ Archived items stay out of the digest and candidate counts. Removing one from th
 
 ## Docker Compose
 
-The full stack also runs with Docker Compose, including Ollama. Compose reads `.env`, so create it first:
+The full stack also runs with Docker Compose, including Ollama. Compose reads `.env`, so create it first. You can use Podman instead of Docker if you prefer:
 
 ```bash
 cp .env.example .env
@@ -125,8 +151,11 @@ docker compose up --build
 
 Then open <http://127.0.0.1:8000>. Compose starts three services: `ollama`, a one-shot `ollama-pull` that fetches `TEV_MODEL`, and `app`. SQLite data and downloaded models persist in named volumes.
 
-Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
-Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
+If port 8000 is busy on your machine, you can change PORT in `.env`, to 8080 for example: 
+
+  ![Ollama pull and application ready in Docker Compose](_docs/screenshots/ollama-pull-app-ready.png)
+
+Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -137,7 +166,7 @@ The app binds `0.0.0.0` inside the container, but its host port and the Ollama h
 
 ## Configuration
 
-Settings come from the environment or a local `.env` file; `.env.example` lists them all.
+Settings come from the environment or a local `.env` file; `.env.example` lists the common settings.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -150,9 +179,10 @@ Settings come from the environment or a local `.env` file; `.env.example` lists 
 | `PORT` | `8000` | HTTP port |
 | `MAX_NEW_ITEMS` | `50` | Environment default; the Settings page can override it |
 | `MAX_ITEMS_PER_FEED` | `10` | Environment default; the Settings page can override it |
-| `RETENTION_DAYS` | `30` | Item and job retention; expands when the digest window is wider |
+| `REFRESH_OVERLAP_HOURS` | `6` | Overlap behind the last non-error fetch for later fetches |
+| `RETENTION_DAYS` | `30` | Job retention; item retention expands when the digest window is wider |
 | `WINDOW_HOURS` | `72` | Environment default; the Settings page can override it |
-| `RESCORE_DAYS` | `14` | Retroactive re-score window |
+| `RESCORE_DAYS` | `14` | Reserved; no rescore flow |
 | `THRESHOLD` | `0.55` | Default match threshold for new profiles |
 
 ## Testing and CI
@@ -160,11 +190,12 @@ Settings come from the environment or a local `.env` file; `.env.example` lists 
 Unit and service tests plus FastAPI `TestClient` integration tests live under `tests/`:
 
 ```bash
+pip install -e '.[dev]'
 python -m unittest discover -s tests -v
 ruff check .
 ```
 
-The integration tests exercise the digest, processing actions, archive and feedback pages, JSONL export, settings, profile switching, refresh, job fragment, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
+The integration tests exercise the digest, processing actions, archive and feedback pages, JSONL export, settings, profile switching, refresh, classify pending, job fragment, stop, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
 
 GitHub Actions runs lint and the full test suite on every push and pull request via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
@@ -173,17 +204,17 @@ GitHub Actions runs lint and the full test suite on every push and pull request 
 ### Architecture
 
 - Python 3.12+, FastAPI, Jinja2 + HTMX, SQLite WAL, feedparser, requests, PyYAML, pydantic, python-dateutil, uvicorn.
-- Local decision model via Ollama: model `tev1:0.8b` (fallback `tev1:4b`), POST /v1/systemone. 
+- Local decision model via Ollama: model `tev1:0.8b`, POST /v1/systemone. No fallback model is wired.
 - State = title + summary, truncated to 1200 chars word boundary; no article fetching; no HTML.
 - One noul question per enabled category per item; up to 16 categories.
 - Threshold by profile, 0.55 default; match when probability ≥ threshold; low confidence collapsed by default.
-- Ranking: probability × weight × recency decay; 72h window; dedupe canonical URL + normalized title; retention 30 days.
-- Retroactive edits: preview re-scores last 14 days, atomic apply, cancel discards.
-- Error handling: persisted job state, actionable banner (`ollama serve`, `ollama pull tev1:0.8b`), retry classifies only missing.
+- Ranking: probability × weight × recency decay; 72h window; dedupe canonical URL + normalized title; item retention expands with wider windows, while job retention stays at `RETENTION_DAYS`.
+- Jobs: refresh and classify share a persisted, phase-aware runner; classification can be stopped without losing completed scores.
+- Error handling: persisted job state, actionable banner (`ollama serve`, `ollama pull tev1:0.8b`), retry classifies only missing items.
 
-Reasons are templated, never generated. Ranking handles ordering. Retroactive edits use a preview-diff-then-atomic-apply flow over the last 14 days; weight edits reorder without model calls, threshold edits re-filter cached probabilities.
+Reasons are templated, never generated. Ranking handles ordering. Refresh and Classify pending run as local jobs; no retroactive re-score or category editing UI is implemented.
 
-Before building UI, I ran a model gate via `python eval/harness.py --gate`: a 100-item labeled set (50 per profile) scored on macro-F1, precision@10, latency, and failures. Despite falling short of the originally set targets the local `tev1:0.8b` model results satisfied my expectations after category and threshold tuning; fallback `tev1:4b` documented.
+Before building UI, I ran a model gate via `python eval/harness.py --gate`: a 100-item labeled set (50 per profile) scored on macro-F1, precision@10, latency, and failures. Despite falling short of the originally set targets, I continued with the local `tev1:0.8b` model after category and threshold tuning. No `tev1:4b` results were recorded and the fallback was not adopted.
 
 ### The hard part
 
@@ -225,4 +256,4 @@ categories:
     enabled: true
 ```
 
-Each category can be enabled/disabled. So for example you can be interested in some topic like "Responsible AI & Evaluation", and after getting enough valuable information just turn it off - until you need it again. Similarly with job search and vacancies - your `job-search` profile can include categories for different positions with their own criteria.
+Each category can be enabled/disabled. For example, you can turn off "Responsible AI & Evaluation" after getting enough value, then re-enable it later. The same category structure can be used in another seed profile for a different domain, with categories for different topics and their own criteria.
