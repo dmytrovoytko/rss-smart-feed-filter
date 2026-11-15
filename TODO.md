@@ -329,7 +329,7 @@
     - [x] 3. Add `.dockerignore` to exclude local caches, data, secrets, and test artifacts from the build context.
     - [x] 4. Wire `.env` parity: pass behavioral settings through Compose and add `OLLAMA_BASE_URL_DOCKER` plus `OLLAMA_PUBLISH_HOST`.
     - [x] 5. Map `host.docker.internal` via `extra_hosts` for host-run Ollama.
-    - [x] 6. Document Compose usage, configuration precedence, volume paths, and unavoidable container overrides in `README.md` and `_docs/spec2.md`.
+    - [x] 6. Document Compose usage, configuration precedence, volume paths, and unavoidable container overrides in `README.md` and `_docs/spec.md`.
     - [x] 7. Manually verify `docker compose up --build`, `/healthz`, custom `PORT`, and host/remote Ollama overrides; record evidence.
   - Notes: Targets the Containerization criterion; keep the loopback-only default. Compose requires `.env` via `env_file`. CI does not build the image or run Compose.
 
@@ -343,7 +343,7 @@
   - Assignee: @pm
   - Completed: 2026-11-14 09:53 UTC
   - Verified by: @owner
-  - Evidence: TASK-023 implementation commits 5edc22d and 0471e62; README update 7b36faf; spec 0.3.0 update a7c7383; no separate planning artifact retained.
+  - Evidence: TASK-023 implementation; README update; spec 0.3.0 update; no separate planning artifact retained.
   - Resolution: Closed as delivered through TASK-023; the prioritized UI/UX improvements were implemented and documented.
   - Role: @pm
   - Dependencies: None
@@ -377,9 +377,7 @@
     - [x] 6. Update automated tests for the selected UI/UX improvements.
     - [x] 7. Update `README.md` and `_docs/spec.md` for the selected UI/UX improvements.
 
-## Open backlog
-
-- [!] TASK-024: Add category-scoped feed filtering
+- [x] TASK-024: Add category-scoped feed filtering
   - Priority: High
   - Acceptance criteria:
     - Catalog entries accept one optional `category`.
@@ -389,14 +387,11 @@
     - Existing feed rows receive category mappings on startup without restoring deleted feeds.
     - Unit tests pass and `ruff check .` is clean.
   - Tags: #backend #seed #ui #tests
-  - Parked by: @dev
-  - Parked at: 2026-11-14 10:03 UTC
-  - Assignee: @qa
-  - Reason: verification
-  - State: Implementation and local verification are complete. TASK-024 is ready for independent review.
-  - Next step: Re-run the test suite and ruff, review the category filtering paths, and verify the acceptance criteria.
-  - Evidence: `.venv/bin/python -m unittest discover -s tests` passed 107 tests; `.venv/bin/ruff check .` passed. Changed `app/schema.sql`, `app/db.py`, `app/seed.py`, `profiles/catalog.yaml`, `app/services/candidates.py`, `app/services/feeds.py`, `app/routes/pages.py`, `app/templates/digest.html`, and regression tests.
-  - Suggested role: @qa
+  - Assignee: @dev
+  - Completed: 2026-11-15 09:42 UTC
+  - Verified by: @owner
+  - Evidence: `.venv/bin/python -m unittest discover -s tests` passed 107 tests and `.venv/bin/ruff check .` passed at implementation; @owner manually verified the behavior after the TASK-025 suite reached 123 tests. Changed `app/schema.sql`, `app/db.py`, `app/seed.py`, `profiles/catalog.yaml`, `app/services/candidates.py`, `app/services/feeds.py`, `app/routes/pages.py`, `app/templates/digest.html`, and regression tests.
+  - Resolution: Delivered schema v3 category-scoped feeds, seed validation/backfill, disabled-category fetch and digest exclusions, updated source UI counts, and regression coverage.
   - Role: @dev
   - Dependencies: None
   - Subtasks:
@@ -408,16 +403,18 @@
     - [x] 6. Add regression tests and run unit tests plus ruff.
   - Discussion:
     - 2026-11-14 10:03 UTC @dev #park: Category-scoped feed filtering is implemented and locally verified; parked for independent QA verification.
-  - Notes: Use one category per feed; keep broad/mixed feeds uncategorized; docs remain deferred.
+    - 2026-11-15 09:42 UTC @owner #complete: Manually tested and accepted; TASK-024 closed.
+  - Notes: Use one category per feed; keep broad/mixed feeds uncategorized.
 
-- [ ] TASK-025: Add digest processing actions
+- [x] TASK-025: Add digest processing actions
   - Priority: High
   - Acceptance criteria:
     - Add a per-item Process menu on matched and low-confidence digest entries with Archive, Dismiss, Recategorize, and Feedback.
     - Archive is item-level: hide the item from digest, low-confidence, and candidate/pending counts; expose it on a separate Archive page; keep a denormalized snapshot that survives item retention; allow removal from Archive.
     - Removing an archived item converts it to Dismiss while the underlying item still exists, so it does not reappear in the digest.
     - Dismiss is item-level: hide the item from digest, low-confidence, and candidate/pending counts; provide no undo and no processed view; remove dismissed rows with item retention.
-    - Recategorize records a category match correction with item/category/version/model/probability snapshots, an optional suggested enabled category, and an optional note.
+    - Recategorize records a category match correction with item/category/version/model/probability snapshots, an optional suggested profile category (including disabled categories, which stay disabled), and an optional note.
+    - Archive and dismiss update affected digest category/low-confidence badges and candidate/classified counts without a full page reload.
     - Recategorize hides only the rejected category match; the item remains visible in other category sections; no automatic category move is performed.
     - Recategorize from Low confidence uses the best category and hides that low-confidence entry.
     - Feedback opens the feedback log filtered to the item; the feedback page lists profile feedback and exports deterministic JSONL. Feedback snapshots survive item retention.
@@ -425,18 +422,33 @@
     - Existing loopback-only, local-first constraints remain; add no dependencies.
     - Add schema v4 migration after TASK-024's v3, tests for migration/filtering/pages/export, and update `_docs/spec.md` to 0.4.0 and README.
   - Tags: #backend #ui #schema #tests
-  - Assignee: @unassigned
+  - Assignee: @dev
+  - Completed: 2026-11-15 09:42 UTC
+  - Verified by: @owner
+  - Evidence: `.venv/bin/ruff check .` passed; `.venv/bin/python -m unittest discover -s tests -v` passed 123 tests. @owner manually tested archive, dismiss, recategorize, feedback, export, live counts, and disabled suggestions. Changed `app/schema.sql`, `app/db.py`, `app/services/processing.py`, `app/services/candidates.py`, `app/services/digest.py`, `app/routes/pages.py`, `app/templates/base.html`, `app/templates/digest.html`, `app/templates/archive.html`, `app/templates/feedback.html`, `app/templates/partials/process_menu.html`, `app/templates/partials/digest_results.html`, `app/templates/partials/digest_process_response.html`, `app/static/app.css`, `tests/test_digest.py`, `tests/test_foundation.py`, `tests/test_routes.py`, `README.md`, `_docs/spec.md`, `pyproject.toml`, and `app/__init__.py`.
+  - Resolution: Delivered schema v4 archive/dismiss/category-feedback storage, processing services and routes, Process menu, Archive and Feedback pages, deterministic JSONL export, live digest count updates, disabled Recategorize suggestions, tests, README, and spec 0.4.0.
   - Role: @dev
   - Dependencies: TASK-024
   - Subtasks:
-    - [ ] 1. Add schema v4 tables: `archived_items` with retained snapshot fields, `dismissed_items`, and `category_feedback`; add indexes and migration from v3.
-    - [ ] 2. Add service functions for archive/dismiss/recategorize/feedback and shared digest/count filters for archived, dismissed, and rejected category matches.
-    - [ ] 3. Add POST routes for archive, dismiss, recategorize, and remove-from-archive; add GET archive, feedback, and JSONL export routes.
-    - [ ] 4. Add templates and CSS for the Process menu, recategorize form, Archive page, Feedback page, and navigation links; use HTMX removal/redirects consistent with existing routes.
-    - [ ] 5. Add service tests for filtering, low-confidence behavior, counts, retention snapshots, feedback snapshots, and migration.
-    - [ ] 6. Add route tests for each action, unknown IDs, archive removal, feedback pages, and JSONL content type.
-    - [ ] 7. Update README and `_docs/spec.md`; run `ruff check .` and `python -m unittest discover -s tests -v`.
+    - [x] 1. Add schema v4 tables: `archived_items` with retained snapshot fields, `dismissed_items`, and `category_feedback`; add indexes and migration from v3.
+    - [x] 2. Add service functions for archive/dismiss/recategorize/feedback and shared digest/count filters for archived, dismissed, and rejected category matches.
+    - [x] 3. Add POST routes for archive, dismiss, recategorize, and remove-from-archive; add GET archive, feedback, and JSONL export routes.
+    - [x] 4. Add templates and CSS for the Process menu, recategorize form, Archive page, Feedback page, and navigation links; use HTMX removal/redirects consistent with existing routes.
+    - [x] 5. Add service tests for filtering, low-confidence behavior, counts, retention snapshots, feedback snapshots, and migration.
+    - [x] 6. Add route tests for each action, unknown IDs, archive removal, feedback pages, and JSONL content type.
+    - [x] 7. Update README and `_docs/spec.md`; run `ruff check .` and `python -m unittest discover -s tests -v`.
+    - [x] 8. Refresh digest results and counts after Archive/Dismiss without a full page reload.
+    - [x] 9. Include disabled profile categories in Recategorize suggestions without enabling them.
+  - Discussion:
+    - 2026-11-14 12:50 UTC @dev #park: Digest processing actions are implemented and locally verified; parked for independent QA verification.
+    - 2026-11-14 19:19 UTC @dev #reopen: Owner requested fixes for stale category badges after Archive/Dismiss and for disabled categories in Recategorize suggestions.
+    - 2026-11-14 19:22 UTC @dev #park: Follow-up fixes are implemented and locally verified; parked again for independent QA verification.
+    - 2026-11-15 09:42 UTC @owner #complete: Manually tested and accepted; TASK-025 closed.
   - Notes: `Recategorize` is the structured correction action; `Feedback` is the log/export surface, not a second free-form mutation. Archive removal does not resurface the item. Reuse `RANKED_CANDIDATES_CTE` and the TASK-024 category filtering.
+
+## Open backlog
+
+<!-- Add ready tasks here. -->
 
 ## Open questions
 
@@ -452,9 +464,12 @@
 - [2026-11-08 09:18 UTC] @owner: Completed and verified TASK-018, added TASK-019 - TASK-021.
 - [2026-11-08 12:49 UTC] @owner: Completed and verified TASK-019 - TASK-020.
 - [2026-11-10 09:05 UTC] @owner: Marked TASK-021 complete after manual Docker Compose verification.
-- [2026-11-11 15:05 UTC] @owner: Implemented selected UI/UX improvements (commit 5edc22d) and updated automated tests (commit 0471e62).
+- [2026-11-11 15:05 UTC] @owner: Implemented selected UI/UX improvements and updated automated tests.
 - [2026-11-11 15:21 UTC] @owner: Added TASK-022 - TASK-024 for UI/UX planning, selected UI/UX improvements, and category-scoped feed filtering.
-- [2026-11-13 19:17 UTC] @owner: Updated README for Settings and profile switching (commit 7b36faf).
-- [2026-11-14 08:52 UTC] @owner: Updated `_docs/spec.md` to 0.3.0 (commit a7c7383).
+- [2026-11-13 19:17 UTC] @owner: Updated README for Settings and profile switching.
+- [2026-11-14 08:52 UTC] @owner: Updated `_docs/spec.md` to 0.3.0.
 - [2026-11-14 09:53 UTC] @owner: Reconciled tracker: completed TASK-022 and TASK-023; added TASK-025 for digest processing actions, dependent on TASK-024.
 - [2026-11-14 10:03 UTC] @dev: Implemented TASK-024 category-scoped feed filtering and parked it for @qa verification.
+- [2026-11-14 12:50 UTC] @dev: Implemented TASK-025 digest processing actions, added tests and docs, and parked it for @qa verification.
+- [2026-11-14 19:22 UTC] @dev: Fixed live digest counts after Archive/Dismiss, added disabled Recategorize suggestions, and parked TASK-025 for @qa re-verification.
+- [2026-11-15 09:42 UTC] @owner: Manually verified TASK-024 and TASK-025 and marked them complete.
