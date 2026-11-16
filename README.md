@@ -68,7 +68,9 @@ Process menu → archive, dismiss, recategorize, feedback
 
   ![Refresh job showing classification progress and stop control](_docs/screenshots/classification-processing.png)
 
+- **Observability page**: shows summary counts, recent traces, kind/status filters, and local alerts.
 
+  ![Observability page: summary counts, recent traces, kind/status filters, and local alerts](_docs/screenshots/observability-page.png)
 
 ## Code
 
@@ -87,6 +89,8 @@ Process menu → archive, dismiss, recategorize, feedback
 │   ├── logging_config.py
 │   ├── __main__.py
 │   ├── main.py
+│   ├── observability.py
+│   ├── observability_schema.sql
 │   ├── routes/
 │   ├── schema.sql
 │   ├── seed.py
@@ -96,7 +100,8 @@ Process menu → archive, dismiss, recategorize, feedback
 │   ├── timeutil.py
 │   └── versioning.py
 ├── data
-│   └── feedfilter.db   # generated at runtime (not committed)
+│   ├── feedfilter.db        # generated at runtime (not committed)
+│   └── observability.db     # local diagnostics only (not committed)
 ├── eval/
 ├── profiles
 │   ├── catalog.yaml
@@ -140,6 +145,24 @@ Use the per-item **Process** menu on matched or low-confidence entries:
 
 Archived items stay out of the digest and candidate counts. Removing one from the Archive page converts it to a dismissal while the underlying item exists.
 
+## Observability and alerts
+
+Diagnostics are local. The app writes traces, spans, metrics, structured log records, and alerts to a second SQLite database, kept separate from the digest database. No external telemetry service is called, and no account is required.
+
+- **Observability page**: open **Observability** in the header or go to <http://127.0.0.1:8000/observability>. It shows summary counts, recent traces, kind/status filters, and local alerts.
+- **Traces**: each request and refresh/classify job gets a trace ID. HTTP responses include `X-Trace-ID`; static assets, `/favicon.ico`, and `/healthz` are excluded. Open a trace to inspect its spans, metrics, and structured logs. Refresh traces include `feed.fetch`, `classify.items`, and `job.persist` spans.
+- **Alerts**: failed jobs, classification/Ollama failures, all-feeds-failed refreshes, and empty digests after a successful refresh create local alerts. The digest shows an alert banner for the active profile. Open alerts are deduplicated by profile and code; use **Acknowledge** on the Observability page to close one.
+- **Health**: `/healthz` keeps the existing table counts and adds `observability.status` plus `observability.open_alerts`. The Docker healthcheck is unchanged.
+- **Privacy**: the observability database stores IDs, counts, durations, statuses, event names, sanitized error-class messages, and URL-sanitized text. It does not store article titles, summaries, feed titles, model prompts, credentials, or external telemetry.
+- **Configuration**: `OBS_DB_PATH` selects the observability database and defaults to `./data/observability.db`; it must differ from `DB_PATH`. Compose passes `OBS_DB_PATH` through to `/app/data/observability.db` in the existing `feedfilter-data` volume.
+- **Reset**: stop the app, delete the file, and restart to recreate the schema:
+
+  ```bash
+  rm -f data/observability.db
+  ```
+
+  This removes local diagnostics and alert history only; the digest database and profiles are untouched. In Compose the file lives at `/app/data/observability.db` inside the `feedfilter-data` volume.
+
 ## Docker Compose
 
 The full stack also runs with Docker Compose, including Ollama. Compose reads `.env`, so create it first. You can use Podman instead of Docker if you prefer:
@@ -155,14 +178,14 @@ If port 8000 is busy on your machine, you can change PORT in `.env`, to 8080 for
 
   ![Ollama pull and application ready in Docker Compose](_docs/screenshots/ollama-pull-app-ready.png)
 
-Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`). Two values are container-specific:
+Compose passes behavioral settings from `.env` (`TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `OBS_DB_PATH`, `LOG_PATH`). Two values are container-specific:
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `OLLAMA_BASE_URL_DOCKER` | `http://ollama:11434` | App-to-Ollama endpoint inside Compose; set to `http://host.docker.internal:11434` for a host Ollama |
 | `OLLAMA_PUBLISH_HOST` | `127.0.0.1` | Host interface for the published Ollama port |
 
-The app binds `0.0.0.0` inside the container, but its host port and the Ollama host port are published on loopback by default. Relative `DB_PATH`/`LOG_PATH` values resolve under `/app` and persist in the `feedfilter-data` volume; custom absolute paths need a matching volume mount.
+The app binds `0.0.0.0` inside the container, but its host port and the Ollama host port are published on loopback by default. Relative `DB_PATH`/`OBS_DB_PATH`/`LOG_PATH` values resolve under `/app` and persist in the `feedfilter-data` volume; custom absolute paths need a matching volume mount.
 
 ## Configuration
 
@@ -173,6 +196,7 @@ Settings come from the environment or a local `.env` file; `.env.example` lists 
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama endpoint |
 | `TEV_MODEL` | `tev1:0.8b` | Decision model |
 | `DB_PATH` | `./data/feedfilter.db` | SQLite database file |
+| `OBS_DB_PATH` | `./data/observability.db` | Separate local observability database; must differ from `DB_PATH` |
 | `LOG_PATH` | `./data/feedfilter.log` | Log file |
 | `LOG_LEVEL` | `INFO` | Log verbosity |
 | `HOST` | `127.0.0.1` | Bind address |
@@ -195,7 +219,7 @@ python -m unittest discover -s tests -v
 ruff check .
 ```
 
-The integration tests exercise the digest, processing actions, archive and feedback pages, JSONL export, settings, profile switching, refresh, classify pending, job fragment, stop, retry, and `/healthz` routes against a temporary SQLite database without calling Ollama over the network.
+The integration tests exercise the digest, processing actions, archive and feedback pages, JSONL export, settings, profile switching, refresh, classify pending, job fragment, stop, retry, `/healthz`, the Observability dashboard and trace detail, alert creation/acknowledgement, and database recreation against temporary SQLite databases without calling Ollama over the network.
 
 GitHub Actions runs lint and the full test suite on every push and pull request via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
@@ -210,7 +234,8 @@ GitHub Actions runs lint and the full test suite on every push and pull request 
 - Threshold by profile, 0.55 default; match when probability ≥ threshold; low confidence collapsed by default.
 - Ranking: probability × weight × recency decay; 72h window; dedupe canonical URL + normalized title; item retention expands with wider windows, while job retention stays at `RETENTION_DAYS`.
 - Jobs: refresh and classify share a persisted, phase-aware runner; classification can be stopped without losing completed scores.
-- Error handling: persisted job state, actionable banner (`ollama serve`, `ollama pull tev1:0.8b`), retry classifies only missing items.
+- Observability: a separate local SQLite database stores correlated traces, spans, metrics, structured logs, and alerts; `/observability` and `/observability/traces/{trace_id}` expose them without an external service.
+- Error handling: persisted job state, actionable banner (`ollama serve`, `ollama pull tev1:0.8b`), retry classifies only missing items, and local alerts for user-impact failures.
 
 Reasons are templated, never generated. Ranking handles ordering. Refresh and Classify pending run as local jobs; no retroactive re-score or category editing UI is implemented.
 
