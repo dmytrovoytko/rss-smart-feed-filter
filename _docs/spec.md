@@ -1,9 +1,9 @@
 # Smart Feed Filter — Product Requirements Document (Implementation Baseline)
 
-**Status:** v0.4.0, MVP
-**Date:** 2026-11-14
+**Status:** v0.5.0, MVP
+**Date:** 2026-11-16
 **Working name:** Smart Feed Filter
-**Scope:** v0.4.0, MVP, local single-user web app
+**Scope:** v0.5.0, MVP, local single-user web app
 **Decision model:** `tev1:0.8b` via Ollama (original evaluation gate not met; accepted for the MVP)  
 **Delivery:** local Python install or Docker Compose
 
@@ -17,7 +17,9 @@ The product is a filtering engine, not a summarizer. It does not fetch article b
 
 The digest also supports lightweight processing: archive or dismiss an item, reject a specific category match, and inspect a deterministic feedback log. These actions stay local and do not call the model.
 
-This version describes the implemented MVP. Planned editing and management surfaces are explicitly deferred in §5.7.
+Diagnostics also stay local. The app writes correlated traces, spans, metrics, structured logs, and user-impact alerts to a separate SQLite database, viewable at `/observability`; no external telemetry service is used.
+
+This version describes the implemented MVP. Planned editing and management surfaces are explicitly deferred in §5.8.
 
 ---
 
@@ -38,12 +40,12 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 - When a match appears, show me the category and match probability so I can trust or dismiss it.
 - When a match is wrong, let me correct that category decision and keep a record of the correction.
 - When a feed or the model fails, show me the problem and let me retry without losing my digest.
-- As a local-first user, I want no account, no telemetry, and no private-service access.
+- As a local-first user, I want no account, no external telemetry, and no private-service access.
 
 **Implemented user stories:**
 1. As a data scientist, I want ML, LLM, analytics, and data-engineering items grouped separately so I can skim by intent.
 2. As an off-work reader, I want hobby items without work, politics, or health noise.
-3. As a local-first user, I want to install with pip or run the stack with Docker Compose, with no account or telemetry.
+3. As a local-first user, I want to install with pip or run the stack with Docker Compose, with no account or external telemetry.
 4. As a reader, I want to archive, dismiss, or correct mismatches so my digest reflects my judgment without editing profile YAML.
 
 **Deferred user stories:**
@@ -56,22 +58,24 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 ## 3. Goals and non-goals
 
 **Goals**
-- One local process, one SQLite file, no accounts.
+- One local process, one main SQLite file plus a separate local observability database, no accounts.
 - Two seeded profiles (`ds.v1`, `fun.v1`) that work without setup.
 - Category-level relevance with templated reason data and match probability.
 - Manual refresh with persisted job state, progress, and retry.
 - Clear, recoverable error states.
+- Correlated local traces, metrics, structured logs, and user-impact alerts with a viewing UI.
 - Reproducible local checks (`ruff`, `unittest`) and a GitHub Actions CI workflow.
 - Optional one-command local stack with Docker Compose, including Ollama.
 
-**Non-goals for v0.4.0 MVP **
+**Non-goals for v0.5.0 MVP **
 - No category editor, preview/apply flow, or retroactive re-score UI.
 - No feed add/remove/toggle UI; the seeded catalog is read-only in the UI.
 - Settings are limited to digest volume and display preferences; no weight or threshold editing.
 - The profile switcher is implemented.
 - No email, calendar, social, or private-service integrations.
 - No full-text article fetching, paywall bypass, or content rehosting.
-- No accounts, multi-user support, cloud sync, or telemetry.
+- No accounts, multi-user support, cloud sync, or external telemetry; diagnostics remain local.
+- No external alert delivery (email, chat, paging) and no on-call automation.
 - No scheduler, push notifications, or background polling.
 - No read/unread tracking. Archive, dismiss, and category feedback are explicit processing actions, not read state.
 - No undoing a dismiss or browsing dismissed items.
@@ -89,7 +93,7 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 | Area | Decision |
 |---|---|
 | Runtime | Local, single-user, one process |
-| Stack | Python 3.12, FastAPI, Jinja2 + HTMX, SQLite WAL |
+| Stack | Python 3.12, FastAPI, Jinja2 + HTMX, main SQLite WAL, observability SQLite (DELETE) |
 | Model | Ollama `tev1:0.8b`; gate evaluated but not met; accepted for MVP |
 | Profiles | `ds.v1` and `fun.v1` seeded from YAML; `ds.v1` active by default |
 | Profile switching | Header switcher; `POST /profiles/{id}/activate` persists the active profile |
@@ -112,6 +116,10 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 | Errors | Persisted job error plus manual retry; previous digest remains |
 | Processing | Per-item Archive, Dismiss, and Recategorize; feedback log with JSONL export |
 | Read state | None; archive/dismiss/feedback are explicit processing actions |
+| Observability store | Separate SQLite database at `OBS_DB_PATH` (schema v1); no foreign keys to the main database |
+| Instrumentation | HTTP and job traces share a trace ID; responses include `X-Trace-ID`; static/favicon/`healthz` excluded |
+| Alerts | Local rows for job/classification failures, all-feeds failure, and zero-item digest; deduplicate open rows by profile and code; manual acknowledge |
+| Diagnostics UI | `/observability` and `/observability/traces/{trace_id}`; templates and CSS only, no new JavaScript |
 | Access | Host bind on 127.0.0.1; container publishes loopback-only ports |
 | Testing | `unittest` service tests plus FastAPI `TestClient` route tests |
 | CI | GitHub Actions on push/PR: `ruff` + `unittest`; no container validation |
@@ -124,7 +132,7 @@ Smart Feed Filter removes the triage step. The user states interests once in see
 
 ### 5.1 First run
 
-1. Create the SQLite database and apply the current schema version (4).
+1. Create the main SQLite database and apply the current schema version (4); separately create or open `OBS_DB_PATH` and apply observability schema version 1.
 2. Load the seeded feed catalog and the two profile presets from `profiles/*.yaml`.
 3. Set `ds.v1` as the active profile; both profiles start with their seeded feeds.
 4. Seed display settings: `hide_low_confidence=0`, `hide_reason_text=0`. Volume preferences fall back to environment defaults until saved in Settings.
@@ -182,13 +190,27 @@ The category editor, preview diff, atomic apply, and retroactive re-score flow a
 - If Ollama is unreachable, the model is missing, or a request fails after retries, the job fails with an actionable error and a Retry button. The previous digest remains visible.
 - Retry is available only for failed jobs and re-enqueues the failed job's mode. A refresh retry fetches again and classifies only items without valid classifications; a classify retry only classifies pending items.
 - On server restart, queued/running/preview jobs are marked failed with `interrupted by server restart`.
+- Job failures, classification/Ollama failures, all-feeds-failed refreshes, and zero-item digests after a successful refresh raise or refresh a local alert. Open alerts are deduplicated by `(profile_id, code)` and appear in the Observability page and the active profile's digest banner.
 
 ### 5.6 Health
 
 - `GET /healthz` returns `{"status": "ok", ...}` plus row counts for profiles, categories, feeds, items, classifications, and jobs.
+- It also returns `observability: {"status": "ok"|"unavailable", "open_alerts": N}` without changing the top-level status.
+- `healthz` is excluded from HTTP traces so the Docker healthcheck does not generate noise.
 - The Docker app healthcheck calls `/healthz` on `127.0.0.1`.
 
-### 5.7 Deferred MVP limits
+### 5.7 Observability and alerts
+
+- **Storage:** a separate SQLite database at `OBS_DB_PATH` (default `./data/observability.db`; Compose `/app/data/observability.db`) stores traces, spans, metrics, logs, and alerts. It has no foreign keys to the main database and uses `journal_mode=DELETE`.
+- **Trace correlation:** HTTP middleware creates a trace ID for each non-excluded request, records an `http.request` span, a `request.finished`/`request.failed` log, an `http.request.duration_ms` metric, and returns `X-Trace-ID`. Static assets, `/favicon.ico`, and `/healthz` are excluded.
+- **Jobs:** refresh/classify jobs create a job trace with `feed.fetch`, `classify.items`, and `job.persist` spans; logs include `job.started`, `job.phase`, `job.finished`, and `job.failed`; metrics include `job.duration_ms`, `job.failed`, job phase totals, and result counts such as feeds, new/updated/window items, and classified/pending counts.
+- **Dashboard:** `/observability` shows summary counts, recent traces with kind/status filters, and alerts. `/observability/traces/{trace_id}` shows trace metadata, spans, metrics, and structured logs. Unknown trace IDs return 404. If the observability database is unavailable, the page shows an error banner while the digest app keeps running.
+- **Alerts:** alert rows include profile ID, code, severity, sanitized message, trace ID, creation time, and acknowledgement time. Codes currently include `job_failed`, `classification_failure`, `all_feeds_failed`, and `zero_items`. Open alerts are deduplicated by `(profile_id, code)`; `POST /observability/alerts/{alert_id}/acknowledge` marks one acknowledged.
+- **Privacy:** observability records store IDs, counts, durations, statuses, event names, error class names, and URL-sanitized text. Article titles, summaries, feed titles, model prompts, credentials, and external telemetry are never stored.
+- **Failure isolation:** observability writes are best effort. A write failure is logged but does not fail a request or job.
+- **Retention:** observability rows are not pruned automatically; stop the app and delete `OBS_DB_PATH` to reset local diagnostics. This does not affect the digest database.
+
+### 5.8 Deferred MVP limits
 
 | Area | Prototype status |
 |---|---|
@@ -381,6 +403,81 @@ Key/value store. Current keys:
 - `max_items_per_feed` (overrides the environment default when set)
 - `window_hours` (overrides the environment default when set)
 
+### Observability database (`OBS_DB_PATH`)
+
+A second SQLite database, independent of the digest database and initialized with schema version `1` in `PRAGMA user_version`. It uses `journal_mode=DELETE`, `busy_timeout=5000`, and `synchronous=NORMAL`, and has no foreign keys to the main database. Initialization is idempotent and recreates the file after deletion.
+
+#### `traces`
+| Column | Type | Notes |
+|---|---|---|
+| `trace_id` | TEXT PK | generated trace ID |
+| `kind` | TEXT | `http` or `job` |
+| `name` | TEXT | request/job name |
+| `profile_id` | TEXT | nullable |
+| `job_id` | INTEGER | nullable |
+| `started_at` | TEXT | UTC ISO-8601 |
+| `finished_at` | TEXT | nullable |
+| `duration_ms` | REAL | nullable |
+| `status` | TEXT | `running`, `ok`, or `error` |
+| `error` | TEXT | sanitized error class/message |
+
+Indexes cover start time and (`kind`, `status`, start time).
+
+#### `spans`
+| Column | Type | Notes |
+|---|---|---|
+| `span_id` | TEXT PK | generated span ID |
+| `trace_id` | TEXT | shared trace ID |
+| `parent_span_id` | TEXT | nullable |
+| `name` | TEXT | e.g. `http.request`, `feed.fetch`, `classify.items`, `job.persist` |
+| `started_at` | TEXT | UTC ISO-8601 |
+| `finished_at` | TEXT | nullable |
+| `duration_ms` | REAL | nullable |
+| `status` | TEXT | `ok` or `error` |
+| `attributes_json` | TEXT | sanitized structured attributes |
+| `error` | TEXT | sanitized error class/message |
+
+An index covers (`trace_id`, start time).
+
+#### `metrics`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `trace_id` | TEXT | nullable but set for correlated metrics |
+| `name` | TEXT | e.g. `http.request.duration_ms`, `job.duration_ms`, `job.failed` |
+| `value` | REAL | numeric value |
+| `unit` | TEXT | e.g. `ms`, `s`, `count` |
+| `labels_json` | TEXT | sanitized labels such as mode/status |
+| `created_at` | TEXT | |
+
+Indexes cover (`trace_id`, creation time) and (`name`, creation time).
+
+#### `logs`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `trace_id` | TEXT | nullable but set for correlated records |
+| `level` | TEXT | `info`, `warning`, or `error` |
+| `event` | TEXT | e.g. `request.finished`, `job.started`, `job.phase`, `job.failed` |
+| `fields_json` | TEXT | sanitized structured fields |
+| `created_at` | TEXT | |
+
+Indexes cover (`trace_id`, creation time) and creation time.
+
+#### `alerts`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `profile_id` | TEXT | nullable |
+| `code` | TEXT | `job_failed`, `classification_failure`, `all_feeds_failed`, or `zero_items` |
+| `severity` | TEXT | `error` or `warning` |
+| `message` | TEXT | sanitized, generic message |
+| `trace_id` | TEXT | nullable |
+| `created_at` | TEXT | |
+| `acknowledged_at` | TEXT | nullable |
+
+Indexes cover (`profile_id`, creation time) and open alerts by acknowledgement/creation time. Open alerts are deduplicated by `(profile_id, code)`; acknowledging one removes it from the open set.
+
 ---
 
 ## 7. Classification contract
@@ -506,6 +603,7 @@ score   = probability × category.weight × recency
 - Delete jobs older than `RETENTION_DAYS` (30 days by default).
 - Dismissals cascade-delete with items.
 - Archive snapshots and category feedback survive item retention.
+- Observability rows are separate and have no automatic retention job; delete `OBS_DB_PATH` while the app is stopped to reset diagnostics.
 - Feedback is exportable as deterministic JSONL from the Feedback page route; there is no other user-facing export.
 
 ---
@@ -515,10 +613,11 @@ score   = probability × category.weight × recency
 ### 9.1 Components
 
 - **Web app:** FastAPI serving Jinja templates and HTMX fragments.
-- **Database:** SQLite in WAL mode, one file under the app data directory.
+- **Database:** main SQLite database in WAL mode under the app data directory; diagnostics use a separate observability SQLite database.
 - **Feed service:** `feedparser` for RSS/Atom, `requests` for conditional GETs, per-feed timeouts and error isolation.
 - **Classifier:** Ollama `/v1/systemone`, one request per item, sequential.
 - **Job runner:** one in-process worker thread plus a jobs table.
+- **Observability:** a separate SQLite store plus HTTP middleware, job instrumentation, and local dashboard/trace routes.
 - **Processing:** archive/dismiss/recategorize services plus a feedback log and deterministic JSONL export.
 - **Profiles:** YAML seeds under `profiles/`, imported into SQLite on first run.
 - **Eval:** standalone harness under `eval/`, not part of the web app.
@@ -538,11 +637,14 @@ app/
   db.py
   logging_config.py
   main.py
+  observability.py
+  observability_schema.sql
   schema.sql
   seed.py
   timeutil.py
   versioning.py
   routes/
+    observability.py
     pages.py
   services/
     classify.py
@@ -557,6 +659,8 @@ app/
     base.html
     digest.html
     feedback.html
+    observability.html
+    observability_trace.html
     partials/job.html
     partials/process_menu.html
 eval/
@@ -572,6 +676,7 @@ tests/
   test_feeds.py
   test_foundation.py
   test_jobs.py
+  test_observability.py
   test_routes.py
 .dockerignore
 Dockerfile
@@ -603,7 +708,10 @@ Implemented routes:
 | POST | `/jobs/{id}/retry` | Retry a failed job in its original mode |
 | GET | `/settings` | Settings page |
 | POST | `/settings` | Update digest window, volume caps, and display preferences |
-| GET | `/healthz` | Health and table counts |
+| GET | `/observability` | Local dashboard with summary, trace filters, and alerts |
+| GET | `/observability/traces/{trace_id}` | Trace metadata, spans, metrics, and structured logs |
+| POST | `/observability/alerts/{alert_id}/acknowledge` | Acknowledge an open alert |
+| GET | `/healthz` | Health, main table counts, and observability status/open alerts |
 | GET | `/favicon.ico` | Favicon |
 | GET | `/static/{path}` | CSS, HTMX, favicon |
 
@@ -615,7 +723,8 @@ Deferred routes: category editing, preview/apply, and feed manager.
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama endpoint |
 | `TEV_MODEL` | `tev1:0.8b` | Decision model |
-| `DB_PATH` | `./data/feedfilter.db` | SQLite database file |
+| `DB_PATH` | `./data/feedfilter.db` | Main SQLite database file |
+| `OBS_DB_PATH` | `./data/observability.db` | Separate observability database; must differ from `DB_PATH` |
 | `LOG_PATH` | `./data/feedfilter.log` | Log file |
 | `LOG_LEVEL` | `INFO` | Log verbosity |
 | `HOST` | `127.0.0.1` | Bind address |
@@ -636,9 +745,9 @@ Docker Compose values:
 | `OLLAMA_BASE_URL_DOCKER` | `http://ollama:11434` | App-to-Ollama endpoint inside Compose |
 | `OLLAMA_PUBLISH_HOST` | `127.0.0.1` | Host interface for the published Ollama port |
 
-- Behavioral settings from `.env` are passed through: `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `LOG_PATH`.
+- Behavioral settings from `.env` are passed through: `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `OBS_DB_PATH`, `LOG_PATH`.
 - App `HOST` is forced to `0.0.0.0` inside the container; the host port is published on `127.0.0.1`.
-- Default relative `DB_PATH`/`LOG_PATH` resolve under `/app` to `/app/data/...`; custom absolute paths require a matching volume mount.
+- Default relative `DB_PATH`/`OBS_DB_PATH`/`LOG_PATH` resolve under `/app` to `/app/data/...`; custom absolute paths require a matching volume mount.
 - The container uses `OLLAMA_BASE_URL_DOCKER` instead of the local `OLLAMA_BASE_URL`.
 - Set `OLLAMA_BASE_URL_DOCKER=http://host.docker.internal:11434` to use a host Ollama; `extra_hosts` maps `host.docker.internal` to `host-gateway`.
 
@@ -684,7 +793,7 @@ ruff check .
   - `ollama-pull`: one-shot pull of `TEV_MODEL`, runs after Ollama is healthy.
   - `app`: starts after Ollama is healthy and the model pull completes.
 - Compose requires `.env` for the app via `env_file`.
-- Compose passes `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, and `LOG_PATH` from `.env`.
+- Compose passes `TEV_MODEL`, `PORT`, `LOG_LEVEL`, `MAX_NEW_ITEMS`, `MAX_ITEMS_PER_FEED`, `REFRESH_OVERLAP_HOURS`, `RETENTION_DAYS`, `WINDOW_HOURS`, `RESCORE_DAYS`, `THRESHOLD`, `DB_PATH`, `OBS_DB_PATH`, and `LOG_PATH` from `.env`.
 - App `HOST` is forced to `0.0.0.0` inside the container; the app container uses `OLLAMA_BASE_URL_DOCKER`, which defaults to `http://ollama:11434`.
 - Host ports:
   - App: `127.0.0.1:${PORT:-8000}`
@@ -697,15 +806,15 @@ ruff check .
 ## 10. Non-functional requirements
 
 - **Local only:** host bind is loopback; container host ports are loopback-only. The container itself binds `0.0.0.0` to accept mapped traffic.
-- **Privacy:** no accounts, no private services, no telemetry. Feed content is public and stored only as title, summary, URL, and timestamps.
-- **Security:** escape all feed text in templates; strip HTML; allow only public HTTP(S) feed URLs and reject private/local address ranges and credentials; no script execution from feed content; container runs as non-root.
+- **Privacy:** no accounts, no private services, no external telemetry. Feed content is public and stored only as title, summary, URL, and timestamps. Local observability stores IDs, counts, durations, statuses, event names, sanitized error classes, and URL-sanitized text only; it never stores article content, model prompts, credentials, or feed titles.
+- **Security:** escape all feed text in templates; strip HTML; allow only public HTTP(S) feed URLs and reject private/local address ranges and credentials; no script execution from feed content; container runs as non-root; `OBS_DB_PATH` must differ from `DB_PATH`.
 - **Performance:** original target was 50 items under 3 minutes on an 8-core CPU. The recorded eval p95 is 10.55 s/item, so this target is not demonstrated for the prototype.
 - **Reliability:** feed errors are isolated; model errors fail the job explicitly; job state is persisted; digest reads are transactional; processing actions validate profile/item ownership.
 - **Cost:** zero inference cost; local model only.
-- **Retention:** 30 days for items and jobs; archive and feedback snapshots survive item retention.
-- **Logging:** rotating local log (5 MB × 3 backups) plus stream handler; no full summaries logged by default.
+- **Retention:** effective item retention is `max(RETENTION_DAYS, ceil(window_hours / 24) + 1)` days; jobs use `RETENTION_DAYS` (30 days by default); archive and feedback snapshots survive item retention; observability rows are not pruned automatically.
+- **Logging:** rotating local log (5 MB × 3 backups) plus stream handler; structured observability log records share trace IDs; no full article summaries, titles, prompts, or credentials are logged by default.
 - **Accessibility:** skip link, semantic headings, keyboard-operable details/summary, visible focus, sufficient contrast.
-- **Testing:** unit/service tests for parsing, dedupe, ranking, cache keys, classification, processing filters, retention snapshots, and job runner; FastAPI `TestClient` route integration tests with a temporary SQLite database; no Ollama call in route tests.
+- **Testing:** unit/service tests for parsing, dedupe, ranking, cache keys, classification, processing filters, retention snapshots, job runner, observability initialization, alert deduplication/acknowledgement, and health output; FastAPI `TestClient` route integration tests with temporary main and observability databases; no Ollama call in route tests.
 - **Delivery:** local Python install or Docker Compose; no cloud dependency.
 
 ---
@@ -776,6 +885,7 @@ Recorded `tev1:0.8b` result:
 | 5 | Feed manager, settings, dedupe, retention | Dedupe, retention, digest-volume settings, and profile switcher done; feed manager deferred |
 | 6 | Tests, fixtures, logging, accessibility pass, docs, CI | Done |
 | 7 | Hardening, containerization, delivery docs | Done |
+| 8 | Local observability, alerts, dashboard, health integration, docs | Done |
 
 ---
 
@@ -801,11 +911,17 @@ Implemented criteria:
 - Unknown profile, item, or category requests return 404; profile/item ownership is validated.
 - Ollama downtime produces a failed job with an error and a working retry button; the previous digest remains visible. Retry preserves the failed job's mode.
 - Duplicate feed entries do not create duplicate digest items.
-- No private services, accounts, telemetry, or full-text fetching are present.
+- Request and job traces, spans, metrics, and structured logs are written to the separate observability database and share a trace ID; HTTP responses include `X-Trace-ID`; static assets, favicon, and `/healthz` are excluded.
+- `/observability` shows summary counts, recent traces with kind/status filters, and alerts; `/observability/traces/{trace_id}` shows trace metadata, spans, metrics, and logs; unknown traces return 404; an unavailable observability database shows a banner without stopping the app.
+- Alerts are raised for failed jobs, classification/Ollama failures, all-feeds-failed refreshes, and zero-item digests after a successful refresh; open alerts are deduplicated by `(profile_id, code)`; the digest shows a banner; the acknowledge action clears an open alert.
+- `/healthz` includes observability status and open-alert count while retaining the existing top-level health and table counts.
+- Observability stores no article titles, summaries, feed titles, model prompts, credentials, or external telemetry; write failures do not fail requests or jobs.
+- No private services, accounts, external telemetry, or full-text fetching are present.
 - `ruff check .` and `python -m unittest discover -s tests -v` pass locally and in GitHub Actions on push/PR.
-- Route integration tests cover first-run redirect, digest, refresh enqueue, classify enqueue, HTMX job panel, job fragment, stop, retry, settings, processing actions, archive/feedback pages, JSONL export, unknown IDs, `/healthz`, and favicon against a temporary database without Ollama.
+- Route integration tests cover first-run redirect, digest, refresh enqueue, classify enqueue, HTMX job panel, job fragment, stop, retry, settings, processing actions, archive/feedback pages, JSONL export, unknown IDs, `/healthz`, Observability dashboard/trace/alerts, and favicon against temporary databases without Ollama.
+- Deleting `OBS_DB_PATH` while the app is stopped allows startup to recreate the observability schema; the digest database remains intact.
 - `docker compose up --build` starts Ollama, pulls `TEV_MODEL`, and serves the app on `127.0.0.1:8000`; only loopback host ports are published.
-- The container healthcheck uses `/healthz`.
+- The container healthcheck uses `/healthz`; `OBS_DB_PATH` defaults to `/app/data/observability.db` in the `feedfilter-data` volume.
 - The model gate result is recorded; the gate did not pass and the prototype waiver is documented.
 
 Deferred criteria:
@@ -828,8 +944,11 @@ Deferred criteria:
 - Feed URLs and formats break; per-feed isolation and visible status mitigate this.
 - Prompt injection in feed text is possible. The model has no tools, but hostile text can bias a decision; low-confidence handling is the mitigation.
 - Category and feed management are not available in the UI; settings are limited to digest volume and display preferences.
-- Compose requires `.env`; model selection depends on `TEV_MODEL` being present there. Custom absolute `DB_PATH`/`LOG_PATH` values need a matching volume mount.
+- Compose requires `.env`; model selection depends on `TEV_MODEL` being present there. Custom absolute `DB_PATH`/`OBS_DB_PATH`/`LOG_PATH` values need a matching volume mount.
 - A failed model pull blocks app startup by design.
+- The observability database can become unavailable or unwritable; diagnostics are best effort, the digest app continues, and the dashboard reports the unavailable state.
+- Alerts are local-only and require a manual visit to acknowledge; there is no external paging or on-call automation.
+- Observability rows have no automatic retention and can grow until `OBS_DB_PATH` is deleted.
 - CI does not validate the Docker image, Compose stack, or live Ollama behavior.
 - The Python base image is intentionally unpinned; base-image drift is possible but limited to security patches.
 - Named-volume ownership can require attention when running as non-root.
@@ -918,3 +1037,11 @@ python eval/harness.py --model tev1:0.8b --gate --out eval/results-0.8b.json
 # Container stack
 docker compose up --build
 ```
+
+Stop the app before resetting local diagnostics:
+
+```bash
+rm -f data/observability.db
+```
+
+In Compose, the same file is `/app/data/observability.db` inside the `feedfilter-data` volume.
