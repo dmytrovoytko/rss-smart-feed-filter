@@ -46,6 +46,7 @@ services:
       HOST: 0.0.0.0
       PORT: "${PORT:-8000}"
       DB_PATH: "${DB_PATH:-/app/data/feedfilter.db}"
+      OBS_DB_PATH: "${OBS_DB_PATH:-/app/data/observability.db}"
       LOG_PATH: "${LOG_PATH:-/app/data/feedfilter.log}"
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL_DOCKER:-http://ollama:11434}"
       TEV_MODEL: "${TEV_MODEL:-tev1:0.8b}"

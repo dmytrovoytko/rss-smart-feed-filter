@@ -6,12 +6,25 @@ import queue
 import re
 import sqlite3
 import threading
+import time
 from collections.abc import Callable
+from contextlib import nullcontext
 from typing import Any
 
 from app.config import Settings
 from app.db import open_db
-from app.services.classify import classify_pending_items
+from app.observability import (
+    ObservabilityStore,
+    current_observability_store,
+    current_trace_id,
+    new_trace_id,
+    reset_observability_store,
+    reset_trace_id,
+    set_observability_store,
+    set_trace_id,
+)
+from app.services.classify import ClassificationError, classify_pending_items
+from app.services.digest import build_digest
 from app.services.feeds import FeedError, refresh_profile
 from app.timeutil import utc_now_iso
 
@@ -187,6 +200,157 @@ def _job_error_message(exc: BaseException) -> str:
     return (message or exc.__class__.__name__)[:1000]
 
 
+def _span(name: str, attributes: dict[str, Any] | None = None):
+    store = current_observability_store()
+    trace_id = current_trace_id()
+    if store is None or trace_id is None:
+        return nullcontext()
+    return store.span(trace_id, name, attributes=attributes)
+
+
+_METRIC_FIELDS = (
+    "feeds_total",
+    "feeds_ok",
+    "feeds_not_modified",
+    "feeds_failed",
+    "new_items",
+    "updated_items",
+    "window_items",
+    "items_total",
+    "classified_items",
+    "classified_categories",
+    "pending_items",
+    "pending_after",
+    "unprocessed_items",
+)
+
+
+def _record_job_metrics(
+    store: ObservabilityStore,
+    trace_id: str,
+    result: dict[str, Any] | None,
+    mode: str,
+) -> None:
+    if not result:
+        return
+    for key in _METRIC_FIELDS:
+        value = result.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        store.record_metric(
+            trace_id,
+            f"job.{key}",
+            value,
+            unit="count",
+            labels={"mode": mode},
+        )
+    duration = result.get("duration_s")
+    if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+        store.record_metric(
+            trace_id,
+            "job.operation_duration_s",
+            duration,
+            unit="s",
+            labels={"mode": mode},
+        )
+
+
+def _record_job_outcome(
+    store: ObservabilityStore,
+    trace_id: str,
+    mode: str,
+    status: str,
+) -> None:
+    store.record_metric(
+        trace_id,
+        "job.failed",
+        1 if status == "failed" else 0,
+        unit="count",
+        labels={"mode": mode, "status": status},
+    )
+
+
+def _int_value(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return int(value)
+
+
+def _raise_job_failure_alert(
+    store: ObservabilityStore,
+    trace_id: str,
+    profile_id: str | None,
+    mode: str,
+    exc: BaseException,
+) -> None:
+    if isinstance(exc, ClassificationError):
+        code = "classification_failure"
+        message = (
+            f"Classification failed ({exc.__class__.__name__}). "
+            "Check Ollama and the configured model."
+        )
+    else:
+        code = "job_failed"
+        message = f"{mode.capitalize()} job failed ({exc.__class__.__name__})."
+    store.raise_alert(
+        profile_id=profile_id,
+        code=code,
+        severity="error",
+        message=message,
+        trace_id=trace_id,
+    )
+
+
+def _raise_refresh_success_alerts(
+    store: ObservabilityStore,
+    trace_id: str,
+    conn: sqlite3.Connection,
+    settings: Settings,
+    profile_id: str,
+    result: dict[str, Any] | None,
+) -> None:
+    if not isinstance(result, dict):
+        return
+    feeds_total = _int_value(result.get("feeds_total"))
+    feeds_failed = _int_value(result.get("feeds_failed"))
+    window_items = _int_value(result.get("window_items"))
+
+    if (
+        feeds_total is not None
+        and feeds_failed is not None
+        and feeds_total > 0
+        and feeds_failed >= feeds_total
+    ):
+        store.raise_alert(
+            profile_id=profile_id,
+            code="all_feeds_failed",
+            severity="error",
+            message=f"All {feeds_total} enabled feeds failed during refresh.",
+            trace_id=trace_id,
+        )
+
+    digest_items: int | None = None
+    if window_items == 0:
+        digest_items = 0
+    elif window_items is not None:
+        try:
+            digest = build_digest(conn, settings, profile_id)
+            digest_items = sum(
+                len(section["entries"]) for section in digest["sections"]
+            ) + len(digest["low_confidence"])
+        except Exception:
+            log.warning("digest alert check failed", exc_info=True)
+
+    if digest_items == 0:
+        store.raise_alert(
+            profile_id=profile_id,
+            code="zero_items",
+            severity="warning",
+            message="Refresh completed but the 72-hour digest has no items.",
+            trace_id=trace_id,
+        )
+
+
 def _classification_fields(classification: dict[str, Any]) -> dict[str, Any]:
     return {
         "classification": classification,
@@ -230,12 +394,13 @@ def run_refresh_job(
     def fetch_progress(processed: int, total: int) -> None:
         progress("fetching", processed, total)
 
-    result = refresh_profile(
-        conn,
-        settings,
-        profile_id,
-        on_progress=fetch_progress,
-    )
+    with _span("feed.fetch", {"profile_id": profile_id, "mode": "refresh"}):
+        result = refresh_profile(
+            conn,
+            settings,
+            profile_id,
+            on_progress=fetch_progress,
+        )
     result["mode"] = "refresh"
     update_job(
         conn,
@@ -250,13 +415,14 @@ def run_refresh_job(
     def classify_progress(processed: int, total: int) -> None:
         progress("classifying", processed, total)
 
-    classification = classify_pending_items(
-        conn,
-        settings,
-        profile_id,
-        on_progress=classify_progress,
-        should_stop=should_stop,
-    )
+    with _span("classify.items", {"profile_id": profile_id, "mode": "refresh"}):
+        classification = classify_pending_items(
+            conn,
+            settings,
+            profile_id,
+            on_progress=classify_progress,
+            should_stop=should_stop,
+        )
     fields = _classification_fields(classification)
     for key in ("window_hours", "max_items_per_feed"):
         if fields.get(key) is None and key in result:
@@ -276,13 +442,14 @@ def run_classify_job(
     def classify_progress(processed: int, total: int) -> None:
         progress("classifying", processed, total)
 
-    classification = classify_pending_items(
-        conn,
-        settings,
-        profile_id,
-        on_progress=classify_progress,
-        should_stop=should_stop,
-    )
+    with _span("classify.items", {"profile_id": profile_id, "mode": "classify"}):
+        classification = classify_pending_items(
+            conn,
+            settings,
+            profile_id,
+            on_progress=classify_progress,
+            should_stop=should_stop,
+        )
     result = {
         "mode": "classify",
         "errors": [],
@@ -300,8 +467,10 @@ class JobRunner:
         *,
         refresh_handler: JobHandler | None = None,
         classify_handler: JobHandler | None = None,
+        observability: ObservabilityStore | None = None,
     ) -> None:
         self.settings = settings
+        self.obs = observability or ObservabilityStore(settings.obs_db_path)
         self._handlers: dict[str, JobHandler] = {
             "refresh": refresh_handler or run_refresh_job,
         }
@@ -435,96 +604,276 @@ class JobRunner:
                 self._stop_events.pop(job_id, None)
 
     def _execute_job(self, job_id: int, stop_event: threading.Event) -> None:
-        with open_db(self.settings.db_path) as conn:
-            row = conn.execute(
-                "SELECT id, kind, mode, profile_id, status FROM jobs WHERE id = ?",
-                (job_id,),
-            ).fetchone()
-            if row is None:
-                log.warning("job %s no longer exists", job_id)
-                return
+        trace_id = new_trace_id()
+        trace_token = set_trace_id(trace_id)
+        store_token = set_observability_store(self.obs)
+        job_started = time.perf_counter()
+        trace_started = False
+        trace_finished = False
+        profile_id: str | None = None
+        mode = "refresh"
 
-            if row["status"] != "queued":
-                log.warning("job %s skipped in status %s", job_id, row["status"])
-                return
+        def elapsed_ms() -> float:
+            return round((time.perf_counter() - job_started) * 1000, 3)
 
-            kind = str(row["kind"])
-            mode = str(row["mode"] or "refresh")
-            profile_id = str(row["profile_id"])
-            handler = (
-                self._classify_handler
-                if mode == "classify"
-                else self._handlers.get(kind)
-            )
-            if handler is None:
-                update_job(
-                    conn,
-                    job_id,
-                    status="failed",
-                    error=f"unsupported job kind: {kind}",
+        try:
+            with open_db(self.settings.db_path) as conn:
+                row = conn.execute(
+                    "SELECT id, kind, mode, profile_id, status FROM jobs WHERE id = ?",
+                    (job_id,),
+                ).fetchone()
+                if row is None:
+                    log.warning("job %s no longer exists", job_id)
+                    return
+
+                if row["status"] != "queued":
+                    log.warning("job %s skipped in status %s", job_id, row["status"])
+                    return
+
+                kind = str(row["kind"])
+                mode = str(row["mode"] or "refresh")
+                profile_id = str(row["profile_id"])
+                self.obs.start_trace(
+                    trace_id,
+                    kind="job",
+                    name=f"{mode}.job",
+                    profile_id=profile_id,
+                    job_id=job_id,
                 )
-                conn.commit()
-                return
-
-            update_job(
-                conn,
-                job_id,
-                status="running",
-                phase=None,
-                processed=0,
-                error=None,
-                result_json=None,
-            )
-            conn.commit()
-            log.info(
-                "job %s started: kind=%s mode=%s profile=%s",
-                job_id,
-                kind,
-                mode,
-                profile_id,
-            )
-
-            def progress(phase: str, processed: int, total: int) -> None:
-                update_job(
-                    conn,
-                    job_id,
-                    phase=phase,
-                    processed=processed,
-                    total=total,
+                trace_started = True
+                self.obs.record_log(
+                    trace_id,
+                    "info",
+                    "job.started",
+                    fields={
+                        "job_id": job_id,
+                        "kind": kind,
+                        "mode": mode,
+                        "profile_id": profile_id,
+                    },
                 )
-                conn.commit()
 
-            try:
-                result = handler(
-                    conn,
-                    self.settings,
+                handler = (
+                    self._classify_handler
+                    if mode == "classify"
+                    else self._handlers.get(kind)
+                )
+                if handler is None:
+                    with _span("job.persist", {"job_id": job_id, "mode": mode}):
+                        update_job(
+                            conn,
+                            job_id,
+                            status="failed",
+                            error=f"unsupported job kind: {kind}",
+                        )
+                        conn.commit()
+                    self.obs.record_log(
+                        trace_id,
+                        "error",
+                        "job.failed",
+                        fields={
+                            "job_id": job_id,
+                            "mode": mode,
+                            "error_type": "unsupported_job_kind",
+                        },
+                    )
+                    self.obs.raise_alert(
+                        profile_id=profile_id,
+                        code="job_failed",
+                        severity="error",
+                        message=f"Unsupported job kind: {kind}.",
+                        trace_id=trace_id,
+                    )
+                    self.obs.record_metric(
+                        trace_id,
+                        "job.duration_ms",
+                        elapsed_ms(),
+                        unit="ms",
+                        labels={"mode": mode, "status": "failed"},
+                    )
+                    _record_job_outcome(self.obs, trace_id, mode, "failed")
+                    self.obs.finish_trace(
+                        trace_id,
+                        status="error",
+                        error="unsupported job kind",
+                        duration_ms=elapsed_ms(),
+                    )
+                    trace_finished = True
+                    return
+
+                with _span("job.persist", {"job_id": job_id, "mode": mode}):
+                    update_job(
+                        conn,
+                        job_id,
+                        status="running",
+                        phase=None,
+                        processed=0,
+                        error=None,
+                        result_json=None,
+                    )
+                    conn.commit()
+                log.info(
+                    "job %s started: kind=%s mode=%s profile=%s",
                     job_id,
+                    kind,
+                    mode,
                     profile_id,
-                    progress,
-                    stop_event.is_set,
                 )
-            except Exception as exc:
-                conn.rollback()
-                message = _job_error_message(exc)
-                update_job(conn, job_id, status="failed", error=message)
-                conn.commit()
-                if isinstance(exc, FeedError):
-                    log.error("job %s failed: %s", job_id, message)
-                else:
-                    log.exception("job %s failed: %s", job_id, message)
-                return
 
-            total_row = conn.execute(
-                "SELECT total FROM jobs WHERE id = ?",
-                (job_id,),
-            ).fetchone()
-            total = int(total_row[0]) if total_row is not None else 0
-            update_job(
-                conn,
-                job_id,
-                status="done",
-                processed=total,
-                result_json=json.dumps(result or {}, sort_keys=True),
-            )
-            conn.commit()
-            log.info("job %s finished", job_id)
+                last_phase: str | None = None
+
+                def progress(phase: str, processed: int, total: int) -> None:
+                    nonlocal last_phase
+                    if phase != last_phase:
+                        last_phase = phase
+                        self.obs.record_log(
+                            trace_id,
+                            "info",
+                            "job.phase",
+                            fields={
+                                "job_id": job_id,
+                                "mode": mode,
+                                "phase": phase,
+                                "processed": processed,
+                                "total": total,
+                            },
+                        )
+                        self.obs.record_metric(
+                            trace_id,
+                            "job.phase_total",
+                            total,
+                            unit="count",
+                            labels={"mode": mode, "phase": phase},
+                        )
+                    update_job(
+                        conn,
+                        job_id,
+                        phase=phase,
+                        processed=processed,
+                        total=total,
+                    )
+                    conn.commit()
+
+                try:
+                    result = handler(
+                        conn,
+                        self.settings,
+                        job_id,
+                        profile_id,
+                        progress,
+                        stop_event.is_set,
+                    )
+                except Exception as exc:
+                    conn.rollback()
+                    message = _job_error_message(exc)
+                    with _span("job.persist", {"job_id": job_id, "mode": mode}):
+                        update_job(conn, job_id, status="failed", error=message)
+                        conn.commit()
+                    self.obs.record_log(
+                        trace_id,
+                        "error",
+                        "job.failed",
+                        fields={
+                            "job_id": job_id,
+                            "mode": mode,
+                            "error_type": exc.__class__.__name__,
+                        },
+                    )
+                    _raise_job_failure_alert(
+                        self.obs,
+                        trace_id,
+                        profile_id,
+                        mode,
+                        exc,
+                    )
+                    self.obs.record_metric(
+                        trace_id,
+                        "job.duration_ms",
+                        elapsed_ms(),
+                        unit="ms",
+                        labels={"mode": mode, "status": "failed"},
+                    )
+                    _record_job_outcome(self.obs, trace_id, mode, "failed")
+                    self.obs.finish_trace(
+                        trace_id,
+                        status="error",
+                        error=exc.__class__.__name__,
+                        duration_ms=elapsed_ms(),
+                    )
+                    trace_finished = True
+                    if isinstance(exc, FeedError):
+                        log.error("job %s failed: %s", job_id, message)
+                    else:
+                        log.exception("job %s failed: %s", job_id, message)
+                    return
+
+                if mode == "refresh":
+                    _raise_refresh_success_alerts(
+                        self.obs,
+                        trace_id,
+                        conn,
+                        self.settings,
+                        profile_id,
+                        result,
+                    )
+                total_row = conn.execute(
+                    "SELECT total FROM jobs WHERE id = ?",
+                    (job_id,),
+                ).fetchone()
+                total = int(total_row[0]) if total_row is not None else 0
+                with _span("job.persist", {"job_id": job_id, "mode": mode}):
+                    update_job(
+                        conn,
+                        job_id,
+                        status="done",
+                        processed=total,
+                        result_json=json.dumps(result or {}, sort_keys=True),
+                    )
+                    conn.commit()
+                self.obs.record_log(
+                    trace_id,
+                    "info",
+                    "job.finished",
+                    fields={
+                        "job_id": job_id,
+                        "mode": mode,
+                        "status": "done",
+                        "duration_ms": elapsed_ms(),
+                    },
+                )
+                self.obs.record_metric(
+                    trace_id,
+                    "job.duration_ms",
+                    elapsed_ms(),
+                    unit="ms",
+                    labels={"mode": mode, "status": "done"},
+                )
+                _record_job_outcome(self.obs, trace_id, mode, "done")
+                _record_job_metrics(self.obs, trace_id, result, mode)
+                self.obs.finish_trace(trace_id, status="ok", duration_ms=elapsed_ms())
+                trace_finished = True
+                log.info("job %s finished", job_id)
+        finally:
+            if trace_started and not trace_finished:
+                self.obs.record_log(
+                    trace_id,
+                    "error",
+                    "job.failed",
+                    fields={"job_id": job_id, "error_type": "internal_error"},
+                )
+                self.obs.raise_alert(
+                    profile_id=profile_id,
+                    code="job_failed",
+                    severity="error",
+                    message="Job failed unexpectedly.",
+                    trace_id=trace_id,
+                )
+                _record_job_outcome(self.obs, trace_id, "unknown", "failed")
+                self.obs.finish_trace(
+                    trace_id,
+                    status="error",
+                    error="internal job runner error",
+                    duration_ms=elapsed_ms(),
+                )
+            reset_observability_store(store_token)
+            reset_trace_id(trace_token)

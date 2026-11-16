@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trace.name }} · Observability{% endblock %}
+
+{% block content %}
+  <section class="page-head" aria-labelledby="trace-title">
+    <div>
+      <p class="eyebrow">{{ trace.kind|upper }} trace</p>
+      <h1 id="trace-title">{{ trace.name }}</h1>
+      <p class="meta-line">
+        <code>{{ trace.trace_id }}</code>
+        <span aria-hidden="true">·</span>
+        <span class="obs-status obs-status-{{ trace.status }}">{{ trace.status }}</span>
+      </p>
+    </div>
+    <div class="head-actions">
+      <a class="button button-secondary" href="{{ request.url_for('observability_page') }}">Back to observability</a>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="trace-meta-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="trace-meta-title">Trace metadata</h2>
+      </div>
+    </div>
+    <dl class="trace-meta">
+      <div>
+        <dt>Kind</dt>
+        <dd>{{ trace.kind }}</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd><span class="obs-status obs-status-{{ trace.status }}">{{ trace.status }}</span></dd>
+      </div>
+      <div>
+        <dt>Profile</dt>
+        <dd>{{ trace.profile_id or "—" }}</dd>
+      </div>
+      <div>
+        <dt>Job</dt>
+        <dd>{% if trace.job_id %}<a href="{{ request.url_for('job_fragment', job_id=trace.job_id) }}">{{ trace.job_id }}</a>{% else %}—{% endif %}</dd>
+      </div>
+      <div>
+        <dt>Started</dt>
+        <dd>{{ trace.started_at|human_time }}</dd>
+      </div>
+      <div>
+        <dt>Finished</dt>
+        <dd>{{ trace.finished_at|human_time }}</dd>
+      </div>
+      <div>
+        <dt>Duration</dt>
+        <dd>{% if trace.duration_ms is not none %}{{ "%.1f"|format(trace.duration_ms) }} ms{% else %}—{% endif %}</dd>
+      </div>
+    </dl>
+    {% if trace.error %}
+      <p class="job-error">{{ trace.error }}</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="spans-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="spans-title">Spans</h2>
+        <p class="muted">Started and finished work inside this trace.</p>
+      </div>
+      <span class="count-badge">{{ spans|length }}</span>
+    </div>
+    {% if spans %}
+      <div class="table-wrap">
+        <table class="obs-table">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Status</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Started</th>
+              <th scope="col">Attributes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for span in spans %}
+              <tr>
+                <td><strong>{{ span.name }}</strong>{% if span.error %}<p class="text-error">{{ span.error }}</p>{% endif %}</td>
+                <td><span class="obs-status obs-status-{{ span.status }}">{{ span.status }}</span></td>
+                <td>{% if span.duration_ms is not none %}{{ "%.1f"|format(span.duration_ms) }} ms{% else %}—{% endif %}</td>
+                <td>{{ span.started_at|human_time }}</td>
+                <td>
+                  {% if span.attributes_pretty %}
+                    <details class="code-details">
+                      <summary>View</summary>
+                      <pre class="code-block">{{ span.attributes_pretty }}</pre>
+                    </details>
+                  {% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No spans recorded for this trace.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="metrics-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="metrics-title">Metrics</h2>
+        <p class="muted">Numeric measurements recorded with this trace.</p>
+      </div>
+      <span class="count-badge">{{ metrics|length }}</span>
+    </div>
+    {% if metrics %}
+      <div class="table-wrap">
+        <table class="obs-table">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Value</th>
+              <th scope="col">Unit</th>
+              <th scope="col">Labels</th>
+              <th scope="col">Recorded</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for metric in metrics %}
+              <tr>
+                <td><strong>{{ metric.name }}</strong></td>
+                <td>{{ metric.value }}</td>
+                <td>{{ metric.unit or "—" }}</td>
+                <td>
+                  {% if metric.labels_pretty %}
+                    <code>{{ metric.labels_pretty }}</code>
+                  {% else %}—{% endif %}
+                </td>
+                <td>{{ metric.created_at|human_time }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No metrics recorded for this trace.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="logs-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="logs-title">Structured logs</h2>
+        <p class="muted">Events recorded with this trace ID.</p>
+      </div>
+      <span class="count-badge">{{ logs|length }}</span>
+    </div>
+    {% if logs %}
+      <div class="table-wrap">
+        <table class="obs-table">
+          <thead>
+            <tr>
+              <th scope="col">Recorded</th>
+              <th scope="col">Level</th>
+              <th scope="col">Event</th>
+              <th scope="col">Fields</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in logs %}
+              <tr>
+                <td>{{ entry.created_at|human_time }}</td>
+                <td><span class="obs-status obs-status-{{ entry.level|lower }}">{{ entry.level }}</span></td>
+                <td><strong>{{ entry.event }}</strong></td>
+                <td>
+                  {% if entry.fields_pretty %}
+                    <details class="code-details">
+                      <summary>View</summary>
+                      <pre class="code-block">{{ entry.fields_pretty }}</pre>
+                    </details>
+                  {% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No structured logs recorded for this trace.</p>
+    {% endif %}
+  </section>
+{% endblock %}

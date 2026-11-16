@@ -37,6 +37,28 @@
     </div>
   </section>
 
+  {% if open_alerts %}
+    {% set top_severity = open_alerts[0].severity %}
+    <section
+      class="alert-banner{% if top_severity == 'error' %} alert-error{% else %} alert-warning{% endif %}"
+      role="alert"
+      aria-labelledby="digest-alerts-title"
+    >
+      <strong id="digest-alerts-title">
+        {{ open_alerts|length }} active alert{% if open_alerts|length != 1 %}s{% endif %}
+      </strong>
+      <ul class="alert-banner-list">
+        {% for alert in open_alerts %}
+          <li>
+            <span class="alert-severity alert-severity-{{ alert.severity }}">{{ alert.severity }}</span>
+            {{ alert.message }}
+          </li>
+        {% endfor %}
+      </ul>
+      <a href="{{ request.url_for('observability_page') }}">Review and acknowledge alerts</a>
+    </section>
+  {% endif %}
+
   {% if job %}
     {% include "partials/job.html" %}
   {% else %}

@@ -21,7 +21,11 @@ class FoundationTestCase(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.db_path = Path(self._tmp.name) / "test.db"
-        self.settings = replace(Settings.from_env(), db_path=self.db_path)
+        self.settings = replace(
+            Settings.from_env(),
+            db_path=self.db_path,
+            obs_db_path=Path(self._tmp.name) / "observability.db",
+        )
         init_db(self.db_path)
 
     def connection(self) -> sqlite3.Connection:

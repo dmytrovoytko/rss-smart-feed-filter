@@ -33,6 +33,7 @@ class DigestTestCase(unittest.TestCase):
         self.settings = replace(
             Settings.from_env(),
             db_path=self.db_path,
+            obs_db_path=Path(self._tmp.name) / "observability.db",
             log_path=Path(self._tmp.name) / "test.log",
             window_hours=72,
         )

@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Observability · Smart Feed Filter{% endblock %}
+
+{% block content %}
+  <section class="page-head" aria-labelledby="observability-title">
+    <div>
+      <p class="eyebrow">Local diagnostics</p>
+      <h1 id="observability-title">Observability</h1>
+      <p class="meta-line">Traces, metrics, and structured logs stay in the local observability database.</p>
+    </div>
+    <div class="head-actions">
+      <a class="button button-secondary" href="{{ request.url_for('index') }}">Back to digest</a>
+    </div>
+  </section>
+
+  {% if health.status != "ok" %}
+    <section class="alert-banner alert-error" role="alert">
+      <strong>Observability database unavailable.</strong>
+      The digest app is still running. Check the observability database path and file permissions.
+    </section>
+  {% endif %}
+
+  <section class="summary-grid" aria-label="Observability summary">
+    <div class="summary-card">
+      <span class="summary-value">{{ summary.traces }}</span>
+      <span class="summary-label">Traces</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-value">{{ summary.traces_ok }}</span>
+      <span class="summary-label">OK traces</span>
+    </div>
+    <div class="summary-card{% if summary.traces_error %} summary-card-error{% endif %}">
+      <span class="summary-value">{{ summary.traces_error }}</span>
+      <span class="summary-label">Error traces</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-value">{{ summary.traces_running }}</span>
+      <span class="summary-label">Running</span>
+    </div>
+    <div class="summary-card{% if summary.open_alerts %} summary-card-warning{% endif %}">
+      <span class="summary-value">{{ summary.open_alerts }}</span>
+      <span class="summary-label">Open alerts</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-value">{{ summary.spans }}</span>
+      <span class="summary-label">Spans</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-value">{{ summary.metrics }}</span>
+      <span class="summary-label">Metrics</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-value">{{ summary.logs }}</span>
+      <span class="summary-label">Log records</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="recent-traces-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="recent-traces-title">Recent traces</h2>
+        <p class="muted">Requests and background jobs, newest first.</p>
+      </div>
+    </div>
+
+    <form class="filter-form" method="get" action="{{ request.url_for('observability_page') }}">
+      <div class="filter-row">
+        <label class="filter-field">
+          <span>Kind</span>
+          <select name="kind">
+            <option value="">All kinds</option>
+            {% for value in trace_kinds %}
+              <option value="{{ value }}"{% if filter_kind == value %} selected{% endif %}>{{ value|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Status</span>
+          <select name="status">
+            <option value="">All statuses</option>
+            {% for value in trace_statuses %}
+              <option value="{{ value }}"{% if filter_status == value %} selected{% endif %}>{{ value|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="filter-actions">
+          <button class="button" type="submit">Filter</button>
+          {% if filter_kind or filter_status %}
+            <a class="button button-secondary" href="{{ request.url_for('observability_page') }}">Clear</a>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+
+    {% if traces %}
+      <div class="table-wrap">
+        <table class="obs-table">
+          <thead>
+            <tr>
+              <th scope="col">Started</th>
+              <th scope="col">Kind</th>
+              <th scope="col">Trace</th>
+              <th scope="col">Profile / job</th>
+              <th scope="col">Status</th>
+              <th scope="col">Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trace in traces %}
+              <tr>
+                <td>{{ trace.started_at|human_time }}</td>
+                <td><span class="tag">{{ trace.kind }}</span></td>
+                <td>
+                  <a class="trace-name" href="{{ request.url_for('observability_trace', trace_id=trace.trace_id) }}">{{ trace.name }}</a>
+                  <code class="trace-id">{{ trace.trace_id }}</code>
+                </td>
+                <td>
+                  {{ trace.profile_id or "—" }}
+                  {% if trace.job_id %}<span class="muted">job {{ trace.job_id }}</span>{% endif %}
+                </td>
+                <td><span class="obs-status obs-status-{{ trace.status }}">{{ trace.status }}</span></td>
+                <td>{% if trace.duration_ms is not none %}{{ "%.1f"|format(trace.duration_ms) }} ms{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <section class="empty-state" aria-labelledby="traces-empty-title">
+        <div>
+          <h2 id="traces-empty-title">No matching traces</h2>
+          <p>Refresh the digest or clear the filters to see local activity.</p>
+        </div>
+      </section>
+    {% endif %}
+  </section>
+
+  <section class="panel" aria-labelledby="alerts-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="alerts-title">Alerts</h2>
+        <p class="muted">Local user-impact alerts, newest first.</p>
+      </div>
+      <span class="count-badge">{{ summary.open_alerts }}</span>
+    </div>
+
+    {% if alerts %}
+      <ul class="obs-alert-list">
+        {% for alert in alerts %}
+          <li class="obs-alert">
+            <div class="obs-alert-head">
+              <span class="alert-severity alert-severity-{{ alert.severity }}">{{ alert.severity }}</span>
+              <strong>{{ alert.code }}</strong>
+              {% if alert.acknowledged_at %}
+                <span class="muted">acknowledged {{ alert.acknowledged_at|human_time }}</span>
+              {% else %}
+                <span class="muted">open</span>
+              {% endif %}
+            </div>
+            <p>{{ alert.message }}</p>
+            <p class="digest-meta">
+              {{ alert.profile_id or "all profiles" }}
+              <span aria-hidden="true">·</span>
+              {{ alert.created_at|human_time }}
+              {% if alert.trace_id %}
+                <span aria-hidden="true">·</span>
+                <a href="{{ request.url_for('observability_trace', trace_id=alert.trace_id) }}">View trace</a>
+              {% endif %}
+            </p>
+            {% if not alert.acknowledged_at %}
+              <div class="obs-alert-actions">
+                <form method="post" action="{{ request.url_for('acknowledge_alert', alert_id=alert.id) }}">
+                  <button class="button button-secondary button-small" type="submit">Acknowledge</button>
+                </form>
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <section class="empty-state" aria-labelledby="alerts-empty-title">
+        <div>
+          <h2 id="alerts-empty-title">No alerts</h2>
+          <p>There are no local user-impact alerts recorded yet.</p>
+        </div>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}

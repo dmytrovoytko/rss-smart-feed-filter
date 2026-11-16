@@ -388,6 +388,11 @@ def digest(profile_id: str, request: Request) -> HTMLResponse:
         max_new_items = get_max_new_items(conn, settings.max_new_items)
         max_items_per_feed = get_max_items_per_feed(conn, settings.max_items_per_feed)
         last_refreshed_at = _last_refreshed_at(conn, profile_id)
+        open_alerts = request.app.state.observability.list_alerts(
+            limit=10,
+            profile_id=profile_id,
+            open_only=True,
+        )
 
     return _templates(request).TemplateResponse(
         request=request,
@@ -405,6 +410,7 @@ def digest(profile_id: str, request: Request) -> HTMLResponse:
             "max_items_per_feed": max_items_per_feed,
             "pending_items": digest["pending_items"],
             "last_refreshed_at": last_refreshed_at,
+            "open_alerts": open_alerts,
         },
     )
 
@@ -667,4 +673,8 @@ def healthz(request: Request) -> dict[str, object]:
             table: conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             for table in ("profiles", "categories", "feeds", "items", "classifications", "jobs")
         }
-    return {"status": "ok", **counts}
+    return {
+        "status": "ok",
+        **counts,
+        "observability": request.app.state.observability.health(),
+    }

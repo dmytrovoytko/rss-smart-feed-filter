@@ -39,6 +39,7 @@
             <a href="{{ request.url_for('archive_page', profile_id=active_profile_id) }}">Archive</a>
             <a href="{{ request.url_for('feedback_page', profile_id=active_profile_id) }}">Feedback</a>
           {% endif %}
+          <a href="{{ request.url_for('observability_page') }}">Observability</a>
           <a href="{{ request.url_for('settings_page') }}">Settings</a>
         </nav>
       </div>

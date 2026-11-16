@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sqlite3
 import tempfile
 import threading
@@ -11,7 +12,9 @@ from unittest.mock import patch
 
 from app.config import Settings
 from app.db import connect, init_db, open_db
+from app.observability import ObservabilityStore
 from app.seed import seed_database
+from app.services.classify import OllamaUnavailableError
 from app.services.jobs import (
     JobConflict,
     JobNotFound,
@@ -36,6 +39,7 @@ class JobTestCase(unittest.TestCase):
         self.settings = replace(
             Settings.from_env(),
             db_path=self.db_path,
+            obs_db_path=Path(self._tmp.name) / "observability.db",
             log_path=Path(self._tmp.name) / "test.log",
         )
         init_db(self.db_path)
@@ -71,6 +75,19 @@ class JobTestCase(unittest.TestCase):
             job = get_job(conn, job_id)
         self.fail(f"job {job_id} did not reach {expected}: {job}")
 
+    def wait_for_error_log(
+        self,
+        records: list[logging.LogRecord],
+        *,
+        timeout: float = 3.0,
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if any(record.levelno >= logging.ERROR for record in records):
+                return
+            time.sleep(0.01)
+        self.fail("job did not emit an error log")
+
     def test_runner_completes_job_and_stores_result(self) -> None:
         def handler(
             conn: sqlite3.Connection,
@@ -93,6 +110,86 @@ class JobTestCase(unittest.TestCase):
         self.assertEqual(job["processed"], 2)
         self.assertEqual(job["total"], 2)
         self.assertEqual(job["result"], {"new_items": 4, "profile_id": PROFILE_ID})
+
+    def test_runner_records_job_trace_spans_logs_and_metrics(self) -> None:
+        def fake_refresh(conn, settings, profile_id, *, on_progress=None):
+            if on_progress:
+                on_progress(1, 1)
+            return {
+                "feeds_total": 1,
+                "feeds_ok": 1,
+                "feeds_failed": 0,
+                "new_items": 3,
+                "updated_items": 1,
+                "window_items": 4,
+                "pending_items": 2,
+                "items_total": 4,
+            }
+
+        def fake_classify(
+            conn,
+            settings,
+            profile_id,
+            *,
+            on_progress=None,
+            should_stop=None,
+        ):
+            if on_progress:
+                on_progress(2, 2)
+            return {
+                "classified_items": 2,
+                "classified_categories": 16,
+                "pending_items": 0,
+                "pending_after": 0,
+                "unprocessed_items": 0,
+                "model": settings.tev_model,
+                "duration_s": 0.1,
+            }
+
+        with (
+            patch("app.services.jobs.refresh_profile", side_effect=fake_refresh),
+            patch("app.services.jobs.classify_pending_items", side_effect=fake_classify),
+        ):
+            runner = self.start_runner()
+            job_id, created = runner.enqueue_refresh(PROFILE_ID)
+            self.assertTrue(created)
+            job = self.wait_for_status(job_id, {"done", "failed"})
+
+        self.assertEqual(job["status"], "done")
+
+        store = ObservabilityStore(self.settings.obs_db_path)
+        deadline = time.monotonic() + 3
+        trace = None
+        while time.monotonic() < deadline:
+            traces = store.list_traces(kind="job")
+            trace = next(
+                (item for item in traces if item["job_id"] == job_id),
+                None,
+            )
+            if trace is not None and trace["status"] != "running":
+                break
+            time.sleep(0.01)
+        self.assertIsNotNone(trace)
+        assert trace is not None
+        self.assertEqual(trace["status"], "ok")
+
+        span_names = {span["name"] for span in store.list_spans(trace["trace_id"])}
+        self.assertIn("feed.fetch", span_names)
+        self.assertIn("classify.items", span_names)
+        self.assertIn("job.persist", span_names)
+
+        events = {item["event"] for item in store.list_logs(trace["trace_id"])}
+        self.assertIn("job.started", events)
+        self.assertIn("job.phase", events)
+        self.assertIn("job.finished", events)
+
+        metric_names = {
+            item["name"] for item in store.list_metrics(trace["trace_id"])
+        }
+        self.assertIn("job.duration_ms", metric_names)
+        self.assertIn("job.failed", metric_names)
+        self.assertIn("job.new_items", metric_names)
+        self.assertIn("job.classified_items", metric_names)
 
     def test_runner_stops_running_job_and_stores_stopped_result(self) -> None:
         started = threading.Event()
@@ -122,6 +219,9 @@ class JobTestCase(unittest.TestCase):
 
         self.assertEqual(job["status"], "done")
         self.assertEqual(job["result"], {"stopped": True})
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and runner.is_stop_requested(job_id):
+            time.sleep(0.01)
         self.assertFalse(runner.is_stop_requested(job_id))
 
     def test_run_refresh_job_merges_classification_progress_and_summary(self) -> None:
@@ -391,8 +491,9 @@ class JobTestCase(unittest.TestCase):
         job_id, created = runner.enqueue_classify(PROFILE_ID)
         self.assertTrue(created)
 
-        with self.assertLogs("app.services.jobs", level="ERROR"):
+        with self.assertLogs("app.services.jobs", level="ERROR") as captured:
             failed = self.wait_for_status(job_id, {"done", "failed"})
+            self.wait_for_error_log(captured.records)
         self.assertEqual(failed["mode"], "classify")
         self.assertEqual(failed["status"], "failed")
 
@@ -403,6 +504,92 @@ class JobTestCase(unittest.TestCase):
         self.assertEqual(done["mode"], "classify")
         self.assertEqual(done["status"], "done")
         self.assertEqual(calls, [job_id, retry_id])
+
+    def test_failed_job_creates_job_alert(self) -> None:
+        def handler(
+            conn: sqlite3.Connection,
+            settings: Settings,
+            job_id: int,
+            profile_id: str,
+            progress,
+            should_stop,
+        ) -> dict[str, object]:
+            raise RuntimeError("boom")
+
+        runner = self.start_runner(handler)
+        job_id, _ = runner.enqueue_refresh(PROFILE_ID)
+
+        with self.assertLogs("app.services.jobs", level="ERROR") as captured:
+            job = self.wait_for_status(job_id, {"done", "failed"})
+            self.wait_for_error_log(captured.records)
+        self.assertEqual(job["status"], "failed")
+
+        store = ObservabilityStore(self.settings.obs_db_path)
+        alerts = store.list_alerts(profile_id=PROFILE_ID, open_only=True)
+        alert = next(item for item in alerts if item["code"] == "job_failed")
+        self.assertEqual(alert["severity"], "error")
+        self.assertIsNotNone(alert["trace_id"])
+        self.assertNotIn("boom", alert["message"])
+        self.assertIn("Refresh job failed", alert["message"])
+
+    def test_classification_failure_creates_alert(self) -> None:
+        def handler(
+            conn: sqlite3.Connection,
+            settings: Settings,
+            job_id: int,
+            profile_id: str,
+            progress,
+            should_stop,
+        ) -> dict[str, object]:
+            raise OllamaUnavailableError(
+                "Cannot reach Ollama at http://127.0.0.1:11434"
+            )
+
+        runner = self.start_runner(classify_handler=handler)
+        job_id, _ = runner.enqueue_classify(PROFILE_ID)
+
+        with self.assertLogs("app.services.jobs", level="ERROR") as captured:
+            job = self.wait_for_status(job_id, {"done", "failed"})
+            self.wait_for_error_log(captured.records)
+        self.assertEqual(job["status"], "failed")
+
+        store = ObservabilityStore(self.settings.obs_db_path)
+        alerts = store.list_alerts(profile_id=PROFILE_ID, open_only=True)
+        alert = next(
+            item for item in alerts if item["code"] == "classification_failure"
+        )
+        self.assertEqual(alert["severity"], "error")
+        self.assertIn("Check Ollama", alert["message"])
+        self.assertNotIn("http://", alert["message"])
+
+    def test_refresh_success_creates_zero_items_and_all_feeds_failed_alerts(
+        self,
+    ) -> None:
+        def handler(
+            conn: sqlite3.Connection,
+            settings: Settings,
+            job_id: int,
+            profile_id: str,
+            progress,
+            should_stop,
+        ) -> dict[str, object]:
+            return {
+                "feeds_total": 2,
+                "feeds_ok": 0,
+                "feeds_failed": 2,
+                "window_items": 0,
+            }
+
+        runner = self.start_runner(handler)
+        job_id, _ = runner.enqueue_refresh(PROFILE_ID)
+        job = self.wait_for_status(job_id, {"done", "failed"})
+        self.assertEqual(job["status"], "done")
+
+        store = ObservabilityStore(self.settings.obs_db_path)
+        alerts = store.list_alerts(profile_id=PROFILE_ID, open_only=True)
+        codes = {item["code"] for item in alerts}
+        self.assertIn("all_feeds_failed", codes)
+        self.assertIn("zero_items", codes)
 
     def test_second_enqueue_while_running_returns_existing_job(self) -> None:
         started = threading.Event()
@@ -456,8 +643,9 @@ class JobTestCase(unittest.TestCase):
         runner = self.start_runner(handler)
         job_id, _ = runner.enqueue_refresh(PROFILE_ID)
 
-        with self.assertLogs("app.services.jobs", level="ERROR"):
+        with self.assertLogs("app.services.jobs", level="ERROR") as captured:
             failed = self.wait_for_status(job_id, {"done", "failed"})
+            self.wait_for_error_log(captured.records)
         self.assertEqual(failed["status"], "failed")
         self.assertEqual(failed["error"], "first attempt fails")
 

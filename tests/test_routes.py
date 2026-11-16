@@ -12,6 +12,7 @@ from unittest.mock import patch
 from app.config import Settings
 from app.db import init_db, open_db
 from app.main import create_app
+from app.observability import ObservabilityStore
 from app.routes.pages import _last_refreshed_at
 from app.seed import seed_database
 from app.services.jobs import create_job, get_job, update_job
@@ -27,6 +28,7 @@ class RouteIntegrationTests(unittest.TestCase):
         self.settings = replace(
             Settings.from_env(),
             db_path=self.db_path,
+            obs_db_path=Path(self._tmp.name) / "observability.db",
             log_path=Path(self._tmp.name) / "test.log",
         )
         init_db(self.db_path)
@@ -202,6 +204,36 @@ class RouteIntegrationTests(unittest.TestCase):
         with open_db(self.db_path) as conn:
             return get_job(conn, job_id)
 
+    def test_digest_request_records_observability_trace(self) -> None:
+        response = self.client.get(f"/profiles/{self.profile_id}/digest")
+
+        self.assertEqual(response.status_code, 200)
+        trace_id = response.headers.get("X-Trace-ID")
+        self.assertIsNotNone(trace_id)
+        assert trace_id is not None
+
+        store = self.app.state.observability
+        trace = store.get_trace(trace_id)
+        self.assertIsNotNone(trace)
+        assert trace is not None
+        self.assertEqual(trace["kind"], "http")
+        self.assertEqual(trace["status"], "ok")
+        self.assertTrue(store.list_spans(trace_id))
+        self.assertIn(
+            "request.finished",
+            {item["event"] for item in store.list_logs(trace_id)},
+        )
+        self.assertIn(
+            "http.request.duration_ms",
+            {item["name"] for item in store.list_metrics(trace_id)},
+        )
+
+    def test_static_and_favicon_requests_are_not_traced(self) -> None:
+        response = self.client.get("/favicon.ico")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("X-Trace-ID", response.headers)
+
     def test_healthz_reports_seeded_counts(self) -> None:
         response = self.client.get("/healthz")
 
@@ -211,6 +243,142 @@ class RouteIntegrationTests(unittest.TestCase):
         self.assertGreaterEqual(payload["profiles"], 2)
         self.assertGreater(payload["categories"], 0)
         self.assertGreater(payload["feeds"], 0)
+
+    def test_observability_dashboard_renders_empty_state(self) -> None:
+        self.app.state.observability.init()
+
+        response = self.client.get("/observability?kind=job&status=error")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Observability", response.text)
+        self.assertIn("/observability", response.text)
+        self.assertIn("No matching traces", response.text)
+        self.assertIn("No alerts", response.text)
+
+    def test_observability_dashboard_filters_traces(self) -> None:
+        store = self.app.state.observability
+        store.init()
+        store.start_trace("trace-job", kind="job", name="refresh.job")
+        store.finish_trace("trace-job", status="ok", duration_ms=12.0)
+        store.start_trace("trace-http", kind="http", name="GET /digest")
+        store.finish_trace("trace-http", status="ok", duration_ms=4.0)
+
+        response = self.client.get("/observability?kind=job&status=ok")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("refresh.job", response.text)
+        self.assertNotIn("GET /digest", response.text)
+        self.assertIn('value="job" selected', response.text)
+
+    def test_observability_trace_detail_renders_spans_metrics_and_logs(self) -> None:
+        store = self.app.state.observability
+        store.init()
+        store.start_trace(
+            "trace-detail",
+            kind="job",
+            name="refresh.job",
+            profile_id=self.profile_id,
+            job_id=7,
+        )
+        with store.span("trace-detail", "feed.fetch", attributes={"feeds": 2}):
+            pass
+        store.record_metric(
+            "trace-detail",
+            "job.duration_ms",
+            12.5,
+            unit="ms",
+            labels={"mode": "refresh"},
+        )
+        store.record_log(
+            "trace-detail",
+            "info",
+            "job.finished",
+            fields={"status": "done"},
+        )
+        store.finish_trace("trace-detail", status="ok", duration_ms=12.5)
+
+        response = self.client.get("/observability/traces/trace-detail")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("refresh.job", response.text)
+        self.assertIn("feed.fetch", response.text)
+        self.assertIn("job.duration_ms", response.text)
+        self.assertIn("job.finished", response.text)
+        self.assertIn("Trace metadata", response.text)
+
+    def test_observability_trace_detail_unknown_trace_returns_404(self) -> None:
+        self.app.state.observability.init()
+
+        response = self.client.get("/observability/traces/missing-trace")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_observability_dashboard_handles_unavailable_database(self) -> None:
+        self.app.state.observability = ObservabilityStore(
+            Path(self._tmp.name) / "unavailable" / "observability.db"
+        )
+
+        response = self.client.get("/observability")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Observability database unavailable", response.text)
+
+    def test_digest_shows_open_alert_banner(self) -> None:
+        store = self.app.state.observability
+        store.init()
+        store.raise_alert(
+            profile_id=self.profile_id,
+            code="zero_items",
+            severity="warning",
+            message="Refresh completed but the 72-hour digest has no candidate items.",
+            trace_id="banner-trace",
+        )
+
+        response = self.client.get(f"/profiles/{self.profile_id}/digest")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("1 active alert", response.text)
+        self.assertIn("no candidate items", response.text)
+        self.assertIn("Review and acknowledge alerts", response.text)
+
+    def test_observability_acknowledge_alert(self) -> None:
+        store = self.app.state.observability
+        store.init()
+        store.raise_alert(
+            profile_id=self.profile_id,
+            code="zero_items",
+            severity="warning",
+            message="Acknowledge me",
+        )
+        alert_id = int(store.list_alerts(profile_id=self.profile_id)[0]["id"])
+
+        response = self.client.post(
+            f"/observability/alerts/{alert_id}/acknowledge",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "/observability")
+        self.assertEqual(store.open_alert_count(self.profile_id), 0)
+        detail = self.client.get(f"/profiles/{self.profile_id}/digest")
+        self.assertNotIn("Acknowledge me", detail.text)
+
+    def test_healthz_reports_observability_status_and_open_alerts(self) -> None:
+        store = self.app.state.observability
+        store.init()
+        store.raise_alert(
+            profile_id=self.profile_id,
+            code="job_failed",
+            severity="error",
+            message="Failed job",
+        )
+
+        response = self.client.get("/healthz")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["observability"]["status"], "ok")
+        self.assertEqual(payload["observability"]["open_alerts"], 1)
 
     def test_index_redirects_to_active_profile_digest(self) -> None:
         response = self.client.get("/", follow_redirects=False)

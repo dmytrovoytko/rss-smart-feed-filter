@@ -63,6 +63,7 @@ class Settings:
     ollama_base_url: str
     tev_model: str
     db_path: Path
+    obs_db_path: Path
     log_path: Path
     log_level: str
     host: str
@@ -83,6 +84,9 @@ class Settings:
             ollama_base_url=_env_str("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"),
             tev_model=_env_str("TEV_MODEL", "tev1:0.8b"),
             db_path=_resolve_path(_env_str("DB_PATH", "./data/feedfilter.db")),
+            obs_db_path=_resolve_path(
+                _env_str("OBS_DB_PATH", "./data/observability.db")
+            ),
             log_path=_resolve_path(_env_str("LOG_PATH", "./data/feedfilter.log")),
             log_level=_env_str("LOG_LEVEL", "INFO").upper(),
             host=_env_str("HOST", "127.0.0.1"),
@@ -100,6 +104,8 @@ class Settings:
         return settings
 
     def validate(self) -> None:
+        if self.obs_db_path == self.db_path:
+            raise ValueError("OBS_DB_PATH must differ from DB_PATH")
         if not self.ollama_base_url.startswith(("http://", "https://")):
             raise ValueError("OLLAMA_BASE_URL must start with http:// or https://")
         if not 1 <= self.port <= 65535:
