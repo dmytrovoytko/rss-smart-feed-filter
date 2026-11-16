@@ -446,6 +446,120 @@
     - 2026-11-15 09:42 UTC @owner #complete: Manually tested and accepted; TASK-025 closed.
   - Notes: `Recategorize` is the structured correction action; `Feedback` is the log/export surface, not a second free-form mutation. Archive removal does not resurface the item. Reuse `RANKED_CANDIDATES_CTE` and the TASK-024 category filtering.
 
+- [x] TASK-026: Add separate observability SQLite store and configuration
+  - Priority: High
+  - Acceptance criteria:
+    - `Settings` gains `obs_db_path` from `OBS_DB_PATH`, defaulting to `./data/observability.db`.
+    - `obs_db_path` must not equal `db_path`; validation fails with a clear error if it does.
+    - New `app/observability.py` and `app/observability_schema.sql` initialize and version the independent database.
+    - Schema contains `traces`, `spans`, `metrics`, `logs`, and `alerts`; no foreign keys to the main database.
+    - Initialization is idempotent and recreates the database after deletion.
+    - `.env.example` and `docker-compose.yml` pass `OBS_DB_PATH`; Compose defaults to `/app/data/observability.db` inside the existing `feedfilter-data` volume.
+    - Tests cover config validation, independent initialization, deletion/recreation, and absence of cross-database dependencies.
+  - Assignee: @dev
+  - Completed: 2026-11-16 07:46 UTC
+  - Verified by: @owner
+  - Evidence: `.venv/bin/ruff check .` passed; `.venv/bin/python -m unittest discover -s tests -v` passed 144 tests after TASK-029. Changed `app/config.py`, `app/observability.py`, `app/observability_schema.sql`, `.env.example`, `docker-compose.yml`, test fixtures, and added `tests/test_observability.py`. @owner manually tested TASK-026–TASK-029 and confirmed the observability work.
+  - Resolution: Added a separate, versioned observability SQLite database with configuration, schema, store, env/Compose wiring, and tests; verified by @owner.
+  - Role: @dev
+  - Tags: #observability #backend #config #tests
+  - Dependencies: None
+  - Discussion:
+    - 2026-11-16 07:15 UTC @dev #park: Implemented and locally verified; parked for independent QA verification.
+    - 2026-11-16 07:46 UTC @owner #complete: Manually tested and accepted; TASK-026 closed.
+  - Notes: Files: `app/config.py`, `app/observability.py`, `app/observability_schema.sql`, `.env.example`, `docker-compose.yml`, tests.
+
+- [x] TASK-027: Instrument the refresh journey with traces, metrics, and structured logs
+  - Priority: High
+  - Acceptance criteria:
+    - HTTP middleware creates a trace ID, records request traces/spans, and returns `X-Trace-ID`.
+    - Static assets and favicon requests are excluded.
+    - Refresh and classify jobs create a job trace with spans for fetch, classification, and persistence.
+    - Metrics include job duration, feed counts, new/updated/window item counts, classified/pending counts, failures, and status.
+    - Structured log records share the trace ID and record milestones such as `request.finished`, `job.started`, `job.phase`, `job.finished`, and `alert.raised`.
+    - Sensitive feed/article content and credentials are never written to the observability database.
+    - Observability write failures are logged but do not fail the request or job.
+  - Assignee: @dev
+  - Completed: 2026-11-16 07:46 UTC
+  - Verified by: @owner
+  - Evidence: `.venv/bin/ruff check .` passed; `.venv/bin/python -m unittest discover -s tests -v` passed 144 tests after TASK-029. Changed `app/main.py`, `app/services/jobs.py`, and `app/observability.py`; added instrumentation tests in `tests/test_routes.py` and `tests/test_jobs.py`. Telemetry records IDs, counts, statuses, and error class names only; no article titles, summaries, URLs, prompts, or credentials. @owner manually tested TASK-026–TASK-029 and confirmed the observability work.
+  - Resolution: Instrumented HTTP requests and background jobs with trace IDs, spans, metrics, and structured logs; verified by @owner.
+  - Role: @dev
+  - Tags: #observability #backend #instrumentation #tests
+  - Dependencies: TASK-026
+  - Discussion:
+    - 2026-11-16 07:21 UTC @dev #park: Implemented and locally verified; parked for independent QA verification.
+    - 2026-11-16 07:21 UTC @dev #qa: `alert.raised` is intentionally deferred because alert creation is TASK-029; request/job milestones are recorded now.
+    - 2026-11-16 07:46 UTC @owner #complete: Manually tested and accepted; TASK-027 closed.
+  - Notes: Files: `app/main.py`, `app/services/jobs.py`, `app/observability.py`, `tests/test_routes.py`, `tests/test_jobs.py`.
+
+- [x] TASK-028: Add local observability dashboard and trace detail UI
+  - Priority: High
+  - Acceptance criteria:
+    - Add `/observability` with summary counts, recent traces, filters for kind/status, and an alerts section.
+    - Add `/observability/traces/{trace_id}` showing trace metadata, spans, metrics, and structured logs.
+    - Add clear empty and error states, including when the observability database is unavailable.
+    - Add an “Observability” navigation link.
+    - Add templates and CSS without new JavaScript dependencies.
+    - Route tests cover the dashboard, trace detail, unknown trace IDs, and filters.
+  - Assignee: @dev
+  - Completed: 2026-11-16 07:46 UTC
+  - Verified by: @owner
+  - Evidence: `.venv/bin/ruff check .` passed; `.venv/bin/python -m unittest discover -s tests -v` passed 144 tests after TASK-029. Added `app/routes/observability.py`, `app/templates/observability.html`, `app/templates/observability_trace.html`; updated `app/main.py`, `app/templates/base.html`, `app/static/app.css`, and `tests/test_routes.py`. @owner manually tested TASK-026–TASK-029 and confirmed the observability work.
+  - Resolution: Added the local observability dashboard, trace detail page, filters, alert listing, unavailable-database state, navigation, styles, and route tests; verified by @owner.
+  - Role: @dev
+  - Tags: #observability #ui #routes #tests
+  - Dependencies: TASK-027
+  - Discussion:
+    - 2026-11-16 07:30 UTC @dev #park: Implemented and locally verified; parked for independent QA verification.
+    - 2026-11-16 07:30 UTC @dev #qa: Acknowledgement controls are intentionally deferred to TASK-029.
+    - 2026-11-16 07:46 UTC @owner #complete: Manually tested and accepted; TASK-028 closed.
+  - Notes: Files: `app/routes/observability.py`, `app/templates/observability.html`, `app/templates/observability_trace.html`, `app/templates/base.html`, `app/static/app.css`, `app/main.py`, `tests/test_routes.py`.
+
+- [x] TASK-029: Add local user-impact alerts and banner
+  - Priority: High
+  - Acceptance criteria:
+    - Record alerts for at least: failed refresh/classify job, Ollama/classification failure, zero-item digest after a successful refresh, and all feeds failing.
+    - Alerts include profile ID, code, severity, sanitized message, trace ID, and timestamp.
+    - Deduplicate open alerts by `(profile_id, code)`.
+    - Show unacknowledged alerts in the Observability page and a banner on the digest page for the active profile.
+    - Add an acknowledge action.
+    - Extend `/healthz` with observability status and open-alert count without breaking the existing Docker healthcheck.
+    - Tests cover alert creation, deduplication, acknowledgement, banner rendering, and health output.
+  - Assignee: @dev
+  - Completed: 2026-11-16 07:46 UTC
+  - Verified by: @owner
+  - Evidence: `.venv/bin/ruff check .` passed; `.venv/bin/python -m unittest discover -s tests -v` passed 144 tests. Updated `app/observability.py`, `app/services/jobs.py`, `app/routes/observability.py`, `app/routes/pages.py`, `app/templates/digest.html`, `app/templates/observability.html`, `app/static/app.css`, `tests/test_observability.py`, `tests/test_jobs.py`, and `tests/test_routes.py`. @owner manually tested TASK-026–TASK-029 and confirmed the observability work.
+  - Resolution: Added user-impact alerts for job and classification failures, all-feeds failures, and empty digests; open-alert deduplication, acknowledgement, digest banner, observability controls, health output, and tests; verified by @owner.
+  - Role: @dev
+  - Tags: #alerting #observability #ui #tests
+  - Dependencies: TASK-026, TASK-027, TASK-028
+  - Discussion:
+    - 2026-11-16 07:35 UTC @dev #park: Implemented and locally verified; parked for independent QA verification.
+    - 2026-11-16 07:35 UTC @dev #qa: Alerts store generic error-class messages only; raw exception text, URLs, and article content are not written.
+    - 2026-11-16 07:46 UTC @owner #complete: Manually tested and accepted; TASK-029 closed.
+  - Notes: Files: `app/observability.py`, `app/services/jobs.py`, `app/routes/observability.py`, `app/routes/pages.py`, `app/templates/digest.html`, `app/templates/observability.html`, `app/static/app.css`, tests.
+
+- [x] TASK-030: Document observability, verify criteria, and record evidence
+  - Priority: Medium
+  - Acceptance criteria:
+    - README documents the Observability page, alerts, `OBS_DB_PATH`, Compose pass-through, and deletion:
+      - `rm -f data/observability.db` while the app is stopped.
+    - README states that no external telemetry or sensitive article content is stored.
+    - `_docs/spec.md` is updated to 0.5.0 with the observability database, schema, routes, config, logging, and acceptance criteria.
+    - `.env.example`, Compose, and README configuration tables agree.
+    - `ruff check .` and `python -m unittest discover -s tests -v` pass.
+    - Manual verification confirms a refresh trace, metrics, logs, alerts, acknowledgement, and database recreation after deletion.
+  - Assignee: @dev
+  - Completed: 2026-11-16 08:01 UTC
+  - Verified by: @owner
+  - Evidence: `README.md`, `_docs/spec.md` updated.
+  - Resolution: Added the observability and alerts section, observability page demo, `_docs/spec.md` is updated to 0.5.0; verified by @owner.
+  - Role: @dev
+  - Tags: #docs #observability #verification
+  - Dependencies: TASK-026–TASK-029
+  - Notes: Files: `README.md`, `_docs/spec.md`, `.env.example`, `docker-compose.yml`, `TODO.md`.
+
 ## Open backlog
 
 <!-- Add ready tasks here. -->
@@ -473,3 +587,5 @@
 - [2026-11-14 12:50 UTC] @dev: Implemented TASK-025 digest processing actions, added tests and docs, and parked it for @qa verification.
 - [2026-11-14 19:22 UTC] @dev: Fixed live digest counts after Archive/Dismiss, added disabled Recategorize suggestions, and parked TASK-025 for @qa re-verification.
 - [2026-11-15 09:42 UTC] @owner: Manually verified TASK-024 and TASK-025 and marked them complete.
+- [2026-11-16 07:46 UTC] @owner: Manually tested and accepted TASK-026–TASK-029; all tests pass (144), ruff clean; marked them complete.
+- [2026-11-16 08:01 UTC] @owner: Completed TASK-030.
